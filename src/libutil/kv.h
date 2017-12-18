@@ -10,7 +10,7 @@
 
 #define KV_MAX_KEY 128
 
-typedef char kv_keybuf_t[KV_MAX_KEY];
+typedef char kv_keybuf_t[KV_MAX_KEY + 1];
 
 /* Create/destroy/copy kv object.
  */
