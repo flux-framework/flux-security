@@ -268,6 +268,44 @@ int cf_update_file (cf_t *cf, const char *filename, struct cf_error *error)
     return update_object (cf, filename, NULL, 0, error);
 }
 
+int cf_update_pack (cf_t *cf, struct cf_error *error, const char *fmt, ...)
+{
+    json_error_t err;
+    json_t *o;
+    va_list ap;
+    int saved_errno;
+    int rc;
+
+    if (!cf || json_typeof ((json_t *)cf) != JSON_OBJECT) {
+        errprintf (error, NULL, -1, "invalid config object");
+        errno = EINVAL;
+        return -1;
+    }
+    if (!fmt) {
+        errprintf (error, NULL, -1, "invalid format");
+        errno = EINVAL;
+        return -1;
+    }
+
+    va_start (ap, fmt);
+    o = json_vpack_ex (&err, 0, fmt, ap);
+    va_end (ap);
+    if (o == NULL) {
+        errprintf (error, NULL, -1, "%s", err.text);
+        errno = EINVAL;
+        return -1;
+    }
+    if ((rc = json_object_update (cf, o)) < 0) {
+        errprintf (error, NULL, -1, "updating JSON object: out of memory");
+        errno = ENOMEM;
+    }
+
+    saved_errno = errno;
+    json_decref (o);
+    errno = saved_errno;
+    return rc;
+}
+
 int cf_update_glob (cf_t *cf, const char *pattern, struct cf_error *error)
 {
     cf_t *tmp;

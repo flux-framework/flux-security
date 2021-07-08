@@ -522,6 +522,34 @@ void test_update_glob (void)
 
 }
 
+void test_update_pack (void)
+{
+    cf_t *cf;
+    struct cf_error error;
+
+    if (!(cf = cf_create ()))
+        BAIL_OUT ("cf_create");
+
+    ok (cf_update_pack (NULL, &error, NULL) < 0 && errno == EINVAL,
+        "cf_update_pack (NULL, &error, NULL) fails with EINVAL: %s",
+        error.errbuf);
+    ok (cf_update_pack (cf, &error, NULL) < 0 && errno == EINVAL,
+        "cf_update_pack (cf, &error, NULL) fails with EINVAL: %s",
+        error.errbuf);
+
+    ok (cf_update_pack (cf, &error, "{{") < 0 && errno == EINVAL,
+        "cf_update_pack with invalid format fails: %s",
+        error.errbuf);
+
+    ok (cf_update_pack (cf, &error, "{s:i}", "test", 42) == 0,
+        "cf_update_pack works");
+
+    ok (cf_int64 (cf_get_in (cf, "test")) == 42,
+        "cf_update_pack set correct value in cf object");
+
+    cf_destroy (cf);
+}
+
 void test_check (void)
 {
     cf_t *cf;
@@ -635,6 +663,7 @@ int main (int argc, char *argv[])
     test_corner ();
     test_update_file ();
     test_update_glob ();
+    test_update_pack ();
     test_check ();
     test_array_contains ();
 

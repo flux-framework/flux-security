@@ -104,6 +104,10 @@ bool cf_array_contains (const cf_t *cf, const char *str);
 int cf_update (cf_t *cf, const char *buf, int len, struct cf_error *error);
 int cf_update_file (cf_t *cf, const char *filename, struct cf_error *error);
 
+/* Update table 'cf' with jansson-style pack format.
+ */
+int cf_update_pack (cf_t *cf, struct cf_error *error, const char *fmt, ...);
+
 /* Update table 'cf' with info parsed from all filenames matching the
  * wildcard 'pattern', following the rules for the glob(3) function call.
  * On success returns the number of individual files successfully parsed,
