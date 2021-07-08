@@ -394,6 +394,14 @@ const struct cf_option opts_wrongtype[] = { // for 't1'
 };
 
 static void
+create_test_dir (const char *dir, char *prefix, char *path, size_t pathlen)
+{
+    snprintf (path, pathlen, "%s/%s.XXXXXX", dir ? dir : "/tmp", prefix);
+    if (!mkdtemp (path))
+        BAIL_OUT ("mkdtemp: %s: %s", path, strerror (errno));
+}
+
+static void
 create_test_file (const char *dir, char *prefix, char *path, size_t pathlen,
                   const char *contents)
 {
@@ -408,6 +416,84 @@ create_test_file (const char *dir, char *prefix, char *path, size_t pathlen,
         BAIL_OUT ("close %s: %s", path, strerror (errno));
 }
 
+void test_path_paranoia (void)
+{
+    char dir[PATH_MAX + 1];
+    char path[PATH_MAX + 1 + 10];  /* padding for "/bad1.toml" */
+    char spath[PATH_MAX + 1];
+    cf_t *cf;
+    struct cf_error error;
+
+    create_test_dir (getenv ("TMPDIR"), "cf-test", dir, sizeof (dir));
+    snprintf (path, sizeof (path), "%s/bad1.toml", dir);
+
+    memset (&error, 0, sizeof (error));
+
+    if (!(cf = cf_create ()))
+        BAIL_OUT ("cf_create: %s", strerror (errno));
+
+    /*  Enable path paranoia even though we're not running as root */
+    if (cf_update_pack (cf, &error,
+                        "{s:b}",
+                        "enable-path-paranoia", true) < 0)
+        BAIL_OUT ("cf_update_pack: %s", error.errbuf);
+
+    /*  Test non-regular file */
+    if (mknod (path, S_IFIFO|0700, 0) < 0)
+        BAIL_OUT ("mknod: %s: %s", path, strerror (errno));
+    ok (cf_update_file (cf, path, &error) < 0 && errno == EINVAL,
+        "cf_update_file fails on non-regular file: %s",
+        error.errbuf);
+    if (unlink (path) < 0)
+        BAIL_OUT ("unlink %s: %s", path, strerror (errno));
+
+    /*  Test symlink */
+    memset (&error, 0, sizeof (error));
+    create_test_file (getenv ("TMPDIR"), "cf", spath, sizeof (spath), t1);
+
+    if (symlink (spath, path) < 0)
+        BAIL_OUT ("link %s %s: %s", spath, path, strerror (errno));
+    ok (cf_update_file (cf, path, &error) < 0 && errno == EINVAL,
+        "cf_update_file fails on symlink: %s",
+        error.errbuf);
+    if (unlink (path) < 0)
+        BAIL_OUT ("unlink %s: %s", path, strerror (errno));
+    if (unlink (spath) < 0)
+        BAIL_OUT ("unlink %s: %s", path, strerror (errno));
+
+    /*  Test ok permissions */
+    memset (&error, 0, sizeof (error));
+    create_test_file (dir, "test.toml", path, sizeof (path), t1);
+    if (chmod (path, 0600) < 0)
+        BAIL_OUT ("chmod %s: %s", path, strerror (errno));
+    ok (cf_update_file (cf, path, &error) == 0,
+        "cf_update_file works on file with perms 0600");
+
+    /*  Test bad permissions */
+    memset (&error, 0, sizeof (error));
+    if (chmod (path, 0646) < 0)
+        BAIL_OUT ("chmod %s: %s", path, strerror (errno));
+    ok (cf_update_file (cf, path, &error) < 0 && errno == EINVAL,
+        "cf_update_file fails on world writeable file: %s",
+        error.errbuf);
+
+    /*  Disabling enable-path-paranoia works */
+    memset (&error, 0, sizeof (error));
+    if (cf_update_pack (cf, &error,
+                        "{s:b}",
+                        "enable-path-paranoia", false) < 0)
+        BAIL_OUT ("cf_update_pack: %s", error.errbuf);
+    ok (cf_update_file (cf, path, &error) == 0,
+        "cf_update_file now works with enable-path-paranoia = false: %s",
+        error.errbuf);
+
+    if (unlink (path) < 0)
+        BAIL_OUT ("unlink %s: %s", path, strerror (errno));
+    if (rmdir (dir) < 0)
+        BAIL_OUT ("rmdir %s: %s", path, strerror (errno));
+
+    cf_destroy (cf);
+}
 
 void test_update_file (void)
 {
@@ -425,7 +511,7 @@ void test_update_file (void)
         "cf_update_file works");
     errno = 0;
     ok (cf_update_file (cf, "/noexist", &error) < 0 && errno == ENOENT,
-        "cf_update_file fails on nonexistent file");
+        "cf_update_file fails on nonexistent file: %s", error.errbuf);
 
     if (unlink (path) < 0)
         BAIL_OUT ("unlink %s: %s", path, strerror (errno));
@@ -664,6 +750,7 @@ int main (int argc, char *argv[])
     test_update_file ();
     test_update_glob ();
     test_update_pack ();
+    test_path_paranoia ();
     test_check ();
     test_array_contains ();
 
