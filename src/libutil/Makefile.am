@@ -30,7 +30,9 @@ libutil_la_SOURCES = \
 	sha256.h \
 	macros.h \
 	aux.c \
-	aux.h
+	aux.h \
+	strlcpy.c \
+	strlcpy.h
 
 TESTS = \
 	test_hash.t \
