@@ -315,7 +315,7 @@ int cf_update_glob (cf_t *cf, const char *pattern, struct cf_error *error)
     int errnum = 0;
     int rc = glob (pattern, GLOB_ERR, NULL, &gl);
 
-    tmp = cf_create ();
+    tmp = cf_copy (cf);
 
     switch (rc) {
         case 0:
