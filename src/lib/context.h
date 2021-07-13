@@ -15,6 +15,11 @@
 extern "C" {
 #endif
 
+enum {
+    FLUX_SECURITY_DISABLE_PATH_PARANOIA     = 0x1,
+    FLUX_SECURITY_FORCE_PATH_PARANOIA       = 0x2,
+};
+
 typedef struct flux_security flux_security_t;
 
 typedef void (*flux_security_free_f)(void *arg);
