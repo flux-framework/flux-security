@@ -29,6 +29,9 @@
  */
 extern const char *imp_get_config_pattern (void);
 
+/*  External function used to initialize imp config object */
+extern int imp_conf_init (cf_t *cf, struct cf_error *error);
+
 /*  Static prototypes:
  */
 static void initialize_logging ();
@@ -137,7 +140,8 @@ static cf_t * imp_conf_load (const char *pattern)
         return (NULL);
 
     memset (&err, 0, sizeof (err));
-    if ((rc = cf_update_glob (cf, pattern, &err)) < 0) {
+    if (imp_conf_init (cf, &err) < 0
+        || (rc = cf_update_glob (cf, pattern, &err)) < 0) {
         imp_warn ("loading config: %s: %d: %s",
                  err.filename, err.lineno, err.errbuf);
         cf_destroy (cf);
