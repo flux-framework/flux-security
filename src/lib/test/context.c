@@ -210,7 +210,7 @@ void test_corner (void)
         BAIL_OUT ("flux_security_create failed");
 
     errno = 0;
-    ok (flux_security_create (1) == NULL && errno == EINVAL,
+    ok (flux_security_create (128) == NULL && errno == EINVAL,
         "flux_security_create with unknown flag fails with EINVAL");
 
     errno = 0;

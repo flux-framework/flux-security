@@ -25,6 +25,7 @@
 
 struct flux_security {
     cf_t *config;
+    int flags;
     struct aux_item *aux;
     char error[200];
     int errnum;
@@ -50,16 +51,31 @@ void security_error (flux_security_t *ctx, const char *fmt, ...)
     }
 }
 
+static bool valid_flags (int flags)
+{
+    /*  Currently valid flags:
+     *   Only one of FLUX_SECURITY_DISABLE_PATH_PARANOIA or
+     *   FLUX_SECURITY_FORCE_PATH_PARANOIA may be set at a time.
+     *   O/w, flags must be unset.
+     */
+    if (flags == 0
+        || flags == FLUX_SECURITY_DISABLE_PATH_PARANOIA
+        || flags == FLUX_SECURITY_FORCE_PATH_PARANOIA)
+        return true;
+    return false;
+}
+
 flux_security_t *flux_security_create (int flags)
 {
     flux_security_t *ctx;
 
-    if (flags != 0) { // not used yet
+    if (!valid_flags (flags)) {
         errno = EINVAL;
         return NULL;
     }
     if (!(ctx = calloc (1, sizeof (*ctx))))
         return NULL;
+    ctx->flags = flags;
     return ctx;
 }
 
@@ -82,7 +98,6 @@ int flux_security_last_errnum (flux_security_t *ctx)
     return ctx ? ctx->errnum : 0;
 }
 
-
 int flux_security_configure (flux_security_t *ctx, const char *pattern)
 {
     struct cf_error cfe;
@@ -98,6 +113,24 @@ int flux_security_configure (flux_security_t *ctx, const char *pattern)
     if (!(cf = cf_create ())) {
         security_error (ctx, NULL);
         return -1;
+    }
+    fprintf (stderr, "ctx->flags = 0x%x\n", ctx->flags);
+    if (((ctx->flags & FLUX_SECURITY_DISABLE_PATH_PARANOIA)
+        && cf_update_pack (cf,
+                           &cfe,
+                           "{s:b}",
+                           "disable-path-paranoia", true) < 0)
+        || ((ctx->flags & FLUX_SECURITY_FORCE_PATH_PARANOIA)
+            && cf_update_pack (cf,
+                               &cfe,
+                               "{s:b}",
+                               "enable-path-paranoia", true) < 0)) {
+        security_error (ctx,
+                        "%s: failed to apply ctx flags: %s",
+                        pattern,
+                        cfe.errbuf);
+        goto error;
+
     }
     if ((n = cf_update_glob (cf, pattern, &cfe)) < 0) {
         security_error (ctx, "%s::%d: %s",

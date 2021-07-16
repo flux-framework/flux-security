@@ -83,7 +83,8 @@ BUILT_SOURCES = \
 #  Installed flux-imp configuration pattern is locked down to
 #   the system path for security reasons.
 config.c:
-	@(echo "#include <stdlib.h>"; \
+	@(echo "#include \"src/libutil/cf.h\""; \
+	  echo "#include <stdlib.h>"; \
 	  echo ; \
 	  echo "const char *imp_get_security_config_pattern (void)"; \
 	  echo "{"; \
@@ -95,6 +96,14 @@ config.c:
 	  echo "{"; \
 	  echo "    return \"$(fluximpcfdir)/*.toml\";"; \
 	  echo "}"; \
+	  echo ; \
+	  echo "int imp_conf_init (__attribute__((unused)) cf_t *cf,"; \
+	  echo "        __attribute__((unused)) struct cf_error *error)"; \
+	  echo "{"; \
+	  echo "    return 0;"; \
+	  echo "}"; \
+	  echo ; \
+	  echo "int imp_get_security_flags (void) { return 0; }"; \
 	)> config.c
 
 #  Test version of flux-imp gets builddir config pattern by default,

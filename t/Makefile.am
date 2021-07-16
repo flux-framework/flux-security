@@ -15,6 +15,7 @@ T_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 TESTSCRIPTS = \
 	t0000-sharness.t \
 	t0100-sudo-unit-tests.t \
+	t0101-cf-path-security.t \
 	t1000-imp-basic.t \
 	t1001-imp-casign.t \
 	t1002-sign-munge.t \

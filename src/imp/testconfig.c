@@ -11,6 +11,8 @@
 #include <stdlib.h>
 
 #include "testconfig.h"
+#include "src/libutil/cf.h"
+#include "src/lib/context.h"
 
 /*
  *  For build-tree/test IMP only! Return config pattern from environment
@@ -25,6 +27,26 @@ const char * imp_get_config_pattern (void)
     return (p);
 }
 
+/*
+ *  For build-tree/test IMP only!
+ *
+ *  Configure cf loader to ignore path permissions unless
+ *   FLUX_TEST_IMP_PATH_PARANOIA is set in environment.
+ *   This allows most system tests to run with IMP config
+ *   in sharness trash directory, even when using sudo to
+ *   run the IMP.
+ */
+int imp_conf_init (cf_t *cf, struct cf_error *error)
+{
+    if (!getenv ("FLUX_TEST_IMP_PATH_PARANOIA")) {
+        return cf_update_pack (cf,
+                               error,
+                               "{s:b}",
+                               "disable-path-paranoia", true);
+    }
+    return 0;
+}
+
 /*  For build-tree/test IMP, return the same config path for
  *   libflux-security as flux-imp. This is what the tests expect
  *   and makes test writing easier (only one env var needed to
@@ -33,6 +55,13 @@ const char * imp_get_config_pattern (void)
 const char * imp_get_security_config_pattern (void)
 {
     return imp_get_config_pattern ();
+}
+
+int imp_get_security_flags (void)
+{
+    if (!getenv ("FLUX_TEST_IMP_PATH_PARANOIA"))
+        return FLUX_SECURITY_DISABLE_PATH_PARANOIA;
+    return 0;
 }
 
 /*

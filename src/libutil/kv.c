@@ -24,6 +24,7 @@
 
 #include "timestamp.h"
 #include "kv.h"
+#include "strlcpy.h"
 
 #define KV_CHUNK 4096
 
@@ -193,10 +194,10 @@ static int kv_put_raw (struct kv *kv, const char *key, enum kv_type type,
     int vallen = strlen (val);
     if (kv_expand (kv, keylen + vallen + 3) < 0) // key\0Tval\0
         return -1;
-    strncpy (&kv->buf[kv->len], key, keylen + 1);
+    strlcpy (&kv->buf[kv->len], key, keylen + 1);
     kv->len += keylen + 1;
     kv->buf[kv->len++] = type;
-    strncpy (&kv->buf[kv->len], val, vallen + 1);
+    strlcpy (&kv->buf[kv->len], val, vallen + 1);
     kv->len += vallen + 1;
     return 0;
 }

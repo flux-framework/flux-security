@@ -60,10 +60,11 @@ struct imp_exec {
 };
 
 extern const char *imp_get_security_config_pattern (void);
+extern int imp_get_security_flags (void);
 
 static flux_security_t *sec_init (void)
 {
-    flux_security_t *sec = flux_security_create (0);
+    flux_security_t *sec = flux_security_create (imp_get_security_flags ());
     const char *conf_pattern = imp_get_security_config_pattern ();
 
     if (!sec || flux_security_configure (sec, conf_pattern) < 0) {
