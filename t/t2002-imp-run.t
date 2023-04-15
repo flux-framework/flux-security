@@ -13,6 +13,8 @@ test -n "$FLUX_TESTS_LOGFILE" && set -- "$@" --logfile
 flux_imp=${SHARNESS_BUILD_DIRECTORY}/src/imp/flux-imp
 sign=${SHARNESS_BUILD_DIRECTORY}/t/src/sign
 
+USER=$(id -un)
+
 echo "# Using ${flux_imp}"
 
 test_expect_success 'flux-imp run returns error when run with no args' '
