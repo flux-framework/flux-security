@@ -1,0 +1,21 @@
+Source: flux-security
+Section: devel
+Priority: optional
+Maintainer: Mark A. Grondona <mark.grondona@gmail.com>
+Standards-Version: 4.1.2
+Build-Depends:
+  debhelper (>= 10),
+  libsodium-dev,
+  libjansson-dev,
+  uuid-dev,
+  libmunge-dev
+
+Homepage: https://github.com/flux-framework/flux-security
+Package: flux-security
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Independent project for Flux security code and APIs.
+ flux-security implements Flux security code and APIs, including the
+ privileged IMP executable.
+ Note: This package is meant for testing and may not meet Debian packaging
+ standards.
