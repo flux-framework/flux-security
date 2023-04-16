@@ -22,6 +22,7 @@ override_dh_autoreconf:
 override_dh_auto_install:
 	dh_auto_install
 	find . -name '*.la' -delete
+	find . -name '*.toml' -delete
 
 override_dh_fixperms:
 	dh_fixperms --exclude flux-imp
