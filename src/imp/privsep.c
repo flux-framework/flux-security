@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 
 /*  Max size of KV array allowed to be sent over privsep pipe */
 #define PRIVSEP_MAX_KVLEN 1024*1024*4
@@ -147,7 +148,8 @@ privsep_t * privsep_init (privsep_child_f fn, void *arg)
     ps->wfd = -1;
     ps->rfd = -1;
 
-    if (pipe (ps->upfds) < 0 || pipe (ps->ppfds) < 0) {
+    if (pipe2 (ps->upfds, O_CLOEXEC) < 0
+        || pipe2 (ps->ppfds, O_CLOEXEC) < 0) {
         imp_warn ("privsep_init: pipe: %s\n", strerror (errno));
         privsep_destroy (ps);
         return (NULL);
