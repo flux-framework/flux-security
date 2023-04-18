@@ -123,6 +123,11 @@ AC_CHECK_HEADERS( \
 )
 
 #
+#  Checks for functions
+#
+AC_CHECK_FUNC([pipe2], [], AC_MSG_FAILURE([Required function pipe2 missing]))
+
+#
 #  Checks for packages
 #
 PKG_CHECK_MODULES([SODIUM], [libsodium >= 1.0.14], [], [])
