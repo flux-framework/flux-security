@@ -137,7 +137,8 @@ TESTS = \
 	test_privsep.t \
 	test_impcmd.t \
 	test_passwd.t \
-	test_pidinfo.t
+	test_pidinfo.t \
+	test_safe_popen.t
 
 check_PROGRAMS = \
 	$(TESTS)
@@ -189,3 +190,11 @@ test_pidinfo_t_SOURCES = \
 	imp_log.c \
 	imp_log.h
 test_pidinfo_t_LDADD = $(test_ldadd)
+
+test_safe_popen_t_SOURCES = \
+	test/safe_popen.c \
+	exec/safe_popen.c \
+	exec/safe_popen.h \
+	imp_log.c \
+	imp_log.h
+test_safe_popen_t_LDADD= $(test_ldadd)
