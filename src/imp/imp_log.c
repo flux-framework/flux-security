@@ -201,31 +201,40 @@ static void vlog_msg (int level, const char *format, va_list ap,
 void imp_say (const char *fmt, ...)
 {
     va_list ap;
+    int saved_errno;
     if (imp_logger.level < IMP_LOG_INFO)
         return;
+    saved_errno = errno;
     va_start (ap, fmt);
     vlog_msg (IMP_LOG_INFO, fmt, ap, imp_logger.outputs);
     va_end (ap);
+    errno = saved_errno;
 }
 
 void imp_warn (const char *fmt, ...)
 {
     va_list ap;
+    int saved_errno;
     if (imp_logger.level < IMP_LOG_WARNING)
         return;
+    saved_errno = errno;
     va_start (ap, fmt);
     vlog_msg (IMP_LOG_WARNING, fmt, ap, imp_logger.outputs);
     va_end (ap);
+    errno = saved_errno;
 }
 
 void imp_debug (const char *fmt, ...)
 {
     va_list ap;
+    int saved_errno;
     if (imp_logger.level < IMP_LOG_DEBUG)
         return;
+    saved_errno = errno;
     va_start (ap, fmt);
     vlog_msg (IMP_LOG_DEBUG, fmt, ap, imp_logger.outputs);
     va_end (ap);
+    errno = saved_errno;
 }
 
 void imp_die (int code, const char *fmt, ...)
