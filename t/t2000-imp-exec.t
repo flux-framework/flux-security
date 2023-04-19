@@ -176,7 +176,7 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: setuid IMP lingers' '
 	count=0 &&
 	while ! test -f sleeper.pid; do
 	    sleep 0.1
-	    let count++
+	    count=$((count+1))
 	    test $count -gt 20 && break
 	    test_debug "echo retrying count=${count}"
 	done &&
