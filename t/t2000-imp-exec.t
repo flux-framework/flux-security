@@ -19,6 +19,14 @@ fake_imp_input() {
 	printf '{"J":"%s"}' $(echo $1 | $sign)
 }
 
+test_expect_success 'create config allowing current user to exec imp' '
+	cat <<-EOF >imp-test.toml
+	allow-sudo = true
+	[exec]
+	allowed-users = [ "$(whoami)" ]
+	EOF
+'
+export FLUX_IMP_CONFIG_PATTERN=imp-test.toml
 test_expect_success 'flux-imp exec returns error when run with no args' '
 	test_must_fail $flux_imp exec
 '
@@ -37,6 +45,8 @@ test_expect_success 'flux-imp exec returns error with bad JSON input ' '
 test_expect_success 'flux-imp exec returns error with invalid JSON input ' '
 	echo "{" | test_must_fail $flux_imp exec shell arg
 '
+unset FLUX_IMP_CONFIG_PATTERN
+
 test_expect_success 'create configs for flux-imp exec and signer' '
 	cat <<-EOF >no-unpriv-exec.toml &&
 	allow-sudo = true
