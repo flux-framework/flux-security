@@ -19,6 +19,13 @@ fake_imp_input() {
 	printf '{"J":"%s"}' $(echo $1 | $sign)
 }
 
+cat <<EOF >helper.sh
+#!/bin/sh
+printf '{"J":"%s"}' \$(echo \$1 | $sign)
+test -z "\$IMP_HELPER_FAIL"
+EOF
+chmod +x helper.sh
+
 test_expect_success 'create config allowing current user to exec imp' '
 	cat <<-EOF >imp-test.toml
 	allow-sudo = true
@@ -45,7 +52,23 @@ test_expect_success 'flux-imp exec returns error with bad JSON input ' '
 test_expect_success 'flux-imp exec returns error with invalid JSON input ' '
 	echo "{" | test_must_fail $flux_imp exec shell arg
 '
+
+#  Now run the expected failure tests above with a helper of /usr/bin/cat:
+export FLUX_IMP_EXEC_HELPER=cat
+test_expect_success 'flux-imp exec returns error with no input' '
+	test_must_fail $flux_imp exec shell arg < /dev/null
+'
+test_expect_success 'flux-imp exec returns error with bad input ' '
+	echo foo | test_must_fail $flux_imp exec shell arg
+'
+test_expect_success 'flux-imp exec returns error with bad JSON input ' '
+	echo "{}" | test_must_fail $flux_imp exec shell arg
+'
+test_expect_success 'flux-imp exec returns error with invalid JSON input ' '
+	echo "{" | test_must_fail $flux_imp exec shell arg
+'
 unset FLUX_IMP_CONFIG_PATTERN
+unset FLUX_IMP_EXEC_HELPER
 
 test_expect_success 'create configs for flux-imp exec and signer' '
 	cat <<-EOF >no-unpriv-exec.toml &&
@@ -100,6 +123,43 @@ test_expect_success 'flux-imp exec works in unprivileged mode if configured' '
 	good
 	EOF
 	test_cmp works.expected works.out
+'
+test_expect_success 'flux-imp exec works in unprivileged mode with helper' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml  &&
+	  export FLUX_IMP_EXEC_HELPER=$(pwd)/helper.sh &&
+	  $flux_imp exec echo good-again >works-helper.out
+	) &&
+	cat >works-helper.expected <<-EOF &&
+	good-again
+	EOF
+	test_cmp works-helper.expected works-helper.out
+'
+test_expect_success 'flux-imp exec returns error with invalid helper' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml &&
+	  export FLUX_IMP_EXEC_HELPER="foo bar" &&
+	  fake_imp_input foo | \
+		test_must_fail $flux_imp exec echo good >badhelper.out 2>&1
+	) &&
+	test_debug "cat badhelper.out" &&
+	grep "imp: popen:" badhelper.out
+'
+test_expect_success 'flux-imp returns error with empty helper' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml &&
+	  export FLUX_IMP_EXEC_HELPER="" &&
+	  fake_imp_input foo | \
+		test_must_fail $flux_imp exec echo OK >emptyhelper.out 2>&1
+	) &&
+	test_debug "cat emptyhelper.out" &&
+	grep "FLUX_IMP_EXEC_HELPER is empty" emptyhelper.out
+'
+test_expect_success 'flux-imp exec fails when helper exits with nonzero status' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml  &&
+	  export FLUX_IMP_EXEC_HELPER=$(pwd)/helper.sh &&
+	  export IMP_HELPER_FAIL=1 &&
+	  test_must_fail $flux_imp exec echo foo >badhelper.log 2>&1
+	) &&
+	test_debug "cat badhelper.log" &&
+	grep "helper.*failed" badhelper.log
 '
 test_expect_success 'flux-imp exec fails when signature type not allowed' '
 	( export FLUX_IMP_CONFIG_PATTERN=./sign-none-allowed-munge.toml  &&
