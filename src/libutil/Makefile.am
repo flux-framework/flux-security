@@ -45,7 +45,8 @@ TESTS = \
 	test_kv.t \
 	test_sha256.t \
 	test_aux.t \
-	test_path.t
+	test_path.t \
+	test_argsplit.t
 
 test_ldadd = \
 	$(top_builddir)/src/libutil/libutil.la \
@@ -90,3 +91,7 @@ test_aux_t_CPPFLAGS = $(test_cppflags)
 test_path_t_SOURCES = test/path.c
 test_path_t_LDADD = $(test_ldadd)
 test_path_t_CPPFLAGS = $(test_cppflags)
+
+test_argsplit_t_SOURCES = test/argsplit.c
+test_argsplit_t_LDADD = $(test_ldadd)
+test_argsplit_t_CPPFLAGS = $(test_cppflags)
