@@ -1,0 +1,8 @@
+[files]
+extend-exclude = [
+  "config/*",
+  "src/libtomlc99/*",
+  "src/libtap/*",
+  "t/sharness.sh",
+  "t/t0000-sharness.t"
+]

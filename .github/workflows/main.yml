@@ -12,6 +12,12 @@ jobs:
     - run: git fetch origin master
     - uses: flux-framework/pr-validator@master
 
+  spelling:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - uses: crate-ci/typos@7ad296c72fa8265059cc03d1eda562fbdfcd6df2 # v1.9.0
+
   generate-matrix:
     # https://stackoverflow.com/questions/59977364
     name: Generate build matrix
