@@ -40,7 +40,7 @@ void imp_switch_user (uid_t uid)
     user = pwd->pw_name;
     gid = pwd->pw_gid;
 
-    /*  Intialize groups from /etc/group */
+    /*  Initialize groups from /etc/group */
     if (initgroups (user, gid) < 0)
         imp_die (1, "initgroups");
 

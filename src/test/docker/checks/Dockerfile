@@ -2,7 +2,7 @@ ARG IMAGESRC
 
 FROM $IMAGESRC
 
-# Allow username, UID, and GID to be overidden on
+# Allow username, UID, and GID to be overridden on
 #  docker build command line:
 #
 ARG USER=fluxuser

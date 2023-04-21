@@ -73,7 +73,7 @@ ssize_t privsep_write_kv (privsep_t *ps, struct kv *kv);
  *   on failure with errno set.
  *
  *  Specific errno values include:
- *    EINVAL  - Invalide privsep handle
+ *    EINVAL  - Invalid privsep handle
  *    E2BIG   - Remote tried to send kv that was too large
  */
 struct kv * privsep_read_kv (privsep_t *ps);

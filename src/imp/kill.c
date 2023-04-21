@@ -162,7 +162,7 @@ int imp_kill_unprivileged (struct imp_state *imp, struct kv *kv)
         imp_die (1, "kill: invalid SIGNAL %s", imp->argv[2]);
 
     /*  PID of 0 is explicitly forbidden here as it could be used
-     *   to inadvertenly kill our parent.
+     *   to inadvertently kill our parent.
      */
     if ((pid = strtol (imp->argv[3], &p, 10)) == 0
         || *p != '\0')

@@ -296,7 +296,7 @@ void test_corner (void)
         "cf_get_in key=NULL fails with EINVAL");
     errno = 0;
     ok (cf_get_in (cf, "bar") == NULL && errno == ENOENT,
-        "cf_get_in key=(unknown) fails wtih ENOENT");
+        "cf_get_in key=(unknown) fails with ENOENT");
 
     /* cf_get_at
      */

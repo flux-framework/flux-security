@@ -81,7 +81,7 @@ void lookup (const cf_t *cf, char *key)
                 printf ("[array]\n");
                 break;
             case CF_UNKNOWN:
-                die ("unknwon type");
+                die ("unknown type");
                 break;
         }
     }

@@ -403,7 +403,7 @@ int cf_update_glob (cf_t *cf, const char *pattern, struct cf_error *error)
     globfree (&gl);
 
     /*
-     *  If glob sucessfully processed at least one file, update
+     *  If glob successfully processed at least one file, update
      *   caller's cf object with all new date in tmp object:
      */
     if ((count > 0) &&  json_object_update (cf, tmp) < 0) {
