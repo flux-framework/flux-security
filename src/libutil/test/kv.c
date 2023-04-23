@@ -195,7 +195,7 @@ static void check_expansion (void)
         "kv_create works");
 
     /* Add entries
-     * Each entry wil be 32+3 + 1 + 32 + 1 = 69 bytes.
+     * Each entry will be 32+3 + 1 + 32 + 1 = 69 bytes.
      * Add 100 of them to ensure 4096 byte "chunk size" is exceeded,
      * so object has to grow at least once.
      */
@@ -228,7 +228,7 @@ static void bad_parameters (void)
     const char *entry;
     int len;
 
-    /* Create two kv objects:  kv (emtpy), and kv2 (non-empty).
+    /* Create two kv objects:  kv (empty), and kv2 (non-empty).
      */
     if (!(kv = kv_create ()))
         BAIL_OUT ("kv_create failed");

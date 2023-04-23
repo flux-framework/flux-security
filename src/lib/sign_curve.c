@@ -50,7 +50,7 @@ static void sc_destroy (struct sign_curve *sc)
     }
 }
 
-/* init - one time mechansim initialization
+/* init - one time mechanism initialization
  */
 static int op_init (flux_security_t *ctx, const cf_t *cf)
 {
