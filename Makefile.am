@@ -8,6 +8,7 @@ SUBDIRS = src doc etc t
 ACLOCAL_AMFLAGS = -I config
 EXTRA_DIST = \
 	config/tap-driver.sh \
+	LICENSE \
 	NOTICE.LLNS \
 	README.md \
 	NEWS.md
