@@ -5,17 +5,19 @@ Independent project for Flux security code and APIs.
 
 flux-security requires the following packages to build:
 
-**redhat**	| **ubuntu**		| **version**
-----------	| ----------		| -----------
-autoconf	| autoconf		|
-automake	| automake		|
-libtool		| libtool		|
-make		| make			|
-pkgconfig	| pkg-config	|
-libsodium-devel	| libsodium-dev		| >= 1.0.14
-jansson-devel	| libjansson-dev	|
-libuuid-devel	| uuid-dev		|
-munge-devel	| libmunge-dev		|
+**redhat**	| **ubuntu**		| **version** | **notes**
+----------	| ----------		| ----------- | ---------
+autoconf	| autoconf		|             |
+automake	| automake		|             |
+libtool		| libtool		|             |
+make		| make			|             |
+pkgconfig	| pkg-config	        |             |
+libsodium-devel	| libsodium-dev		| >= 1.0.14   |
+jansson-devel	| libjansson-dev	|             |
+libuuid-devel	| uuid-dev		|             |
+munge-devel	| libmunge-dev		|             |
+pam-devel	| libpam0g-dev		|             | for --enable-pam
+
 
 ##### Installing RedHat/CentOS Packages
 ```
