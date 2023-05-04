@@ -59,7 +59,7 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	allowed-shells = [ "id", "echo", "$(pwd)/sleeper.sh" ]
 	allow-unprivileged-exec = true
 	EOF
-	cat <<-EOF >sign-none-allowed-munge.toml
+	cat <<-EOF >sign-none-allowed-munge.toml &&
 	allow-sudo = true
 	[sign]
 	max-ttl = 30
@@ -69,6 +69,10 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	allowed-users = [ "$(whoami)" ]
 	allowed-shells = [ "id", "echo" ]
 	allow-unprivileged-exec = true
+	EOF
+	cp sign-none.toml pam-test.toml &&
+	cat <<-EOF >>pam-test.toml
+	pam-support = true
 	EOF
 '
 test_expect_success 'flux-imp exec fails in unprivileged mode by default' '
@@ -173,5 +177,15 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: setuid IMP lingers' '
 	test $(ps --no-header -o comm -p ${pid}) = "flux-imp" &&
 	kill -TERM $pid &&
 	wait
+'
+$flux_imp version | grep -q pam || test_set_prereq NO_PAM
+test_expect_success NO_PAM,SUDO 'flux-imp exec: fails if not built with PAM but pam-support=true' '
+	( export FLUX_IMP_CONFIG_PATTERN=pam-test.toml &&
+	  fake_imp_input foo | \
+		test_must_fail $SUDO FLUX_IMP_CONFIG_PATTERN=pam-test.toml \
+			$flux_imp exec echo ok > pam-err.out 2>&1
+	) &&
+	test_debug "cat pam-err.out" &&
+	grep "IMP was built without --enable-pam" pam-err.out
 '
 test_done
