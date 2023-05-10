@@ -19,6 +19,10 @@
 override_dh_autoreconf:
 	@echo not running autogen.sh on dist product
 
+override_dh_auto_configure:
+	dh_auto_configure -- \
+                --enable-pam
+
 override_dh_auto_install:
 	dh_auto_install
 	find . -name '*.la' -delete

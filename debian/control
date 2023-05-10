@@ -8,7 +8,8 @@ Build-Depends:
   libsodium-dev,
   libjansson-dev,
   uuid-dev,
-  libmunge-dev
+  libmunge-dev,
+  libpam0g-dev
 
 Homepage: https://github.com/flux-framework/flux-security
 Package: flux-security

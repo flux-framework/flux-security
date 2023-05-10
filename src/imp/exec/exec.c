@@ -99,13 +99,11 @@ static bool imp_exec_unprivileged_allowed (struct imp_exec *exec)
 }
 
 
-#if HAVE_PAM
 /* Check for PAM support, but default to not using PAM for now.
  */
 static bool imp_supports_pam (struct imp_exec *exec) {
     return cf_bool (cf_get_in (exec->conf, "pam-support"));
 }
-#endif
 
 static void imp_exec_destroy (struct imp_exec *exec)
 {
@@ -301,14 +299,18 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     if (privsep_wait (imp->ps) < 0)
         exit (1);
 
-#if HAVE_PAM
     /* Call privileged IMP plugins/containment */
     if (imp_supports_pam (exec)) {
+#if HAVE_PAM
         struct passwd *user_pwd = passwd_from_uid (exec->userid);
         if (pam_setup (user_pwd->pw_name) < 0)
             imp_die (1, "exec: PAM stack failure");
-    }
+#else
+        imp_die (1,
+                 "exec: pam-support=true, but IMP was built without "
+                 "--enable-pam");
 #endif /* HAVE_PAM */
+    }
 
     /* Block signals so parent IMP isn't unduly terminated */
     sigblock_all ();
