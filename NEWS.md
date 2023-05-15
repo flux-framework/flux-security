@@ -1,3 +1,23 @@
+flux-security version 0.9.0 - 2023-05-15
+----------------------------------------
+
+## New Features
+
+ * imp: support helper to get input to exec command (#163)
+
+## Fixes
+
+ * imp: fix kill operation when /proc is mounted with hidepid=2 (#155)
+
+# Build/Test
+
+ * build: add 'make deb' target to build test debian package (#161, #162, #166)
+ * detect typos during CI (#164)
+ * Add CodeQL workflow for GitHub code scanning (#156)
+ * ensure LICENSE is included in distribution tarball (#165)
+ * github: update actions workflow (#157)
+
+
 flux-security version 0.8.0 - 2022-09-13
 ----------------------------------------
 
