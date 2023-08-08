@@ -39,7 +39,7 @@ static int  imp_state_init (struct imp_state *imp, int argc, char **argv);
 static cf_t * imp_conf_load (const char *pattern);
 static bool imp_is_privileged ();
 static bool imp_is_setuid ();
-static void initialize_sudo_support ();
+static void initialize_sudo_support (cf_t *conf);
 
 static void imp_child (privsep_t *ps, void *arg);
 static void imp_parent (struct imp_state *imp);
