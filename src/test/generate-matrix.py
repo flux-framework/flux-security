@@ -35,7 +35,7 @@ class BuildMatrix:
     def add_build(
         self,
         name=None,
-        image="bionic",
+        image="bookworm",
         args=default_args,
         jobs=2,
         env=None,
@@ -87,30 +87,30 @@ class BuildMatrix:
 matrix = BuildMatrix()
 
 # Ubuntu: no args
-matrix.add_build(name="bionic")
+matrix.add_build(name="bookworm")
 
 # Ubuntu: 32b
 matrix.add_build(
-    name="bionic - 32 bit",
+    name="bookworm - 32 bit",
     platform="linux/386",
 )
 
 # Ubuntu: gcc-8, content-s3, distcheck
 matrix.add_build(
-    name="bionic - gcc-8,distcheck",
+    name="bookworm - gcc-12,distcheck",
     env=dict(
-        CC="gcc-8",
-        CXX="g++8",
+        CC="gcc-12",
+        CXX="g++12",
         DISTCHECK="t",
     ),
 )
 
 # Ubuntu: clang-6.0
 matrix.add_build(
-    name="bionic - clang-6.0",
+    name="bookworm - clang-15,chain-lint",
     env=dict(
-        CC="clang-6.0",
-        CXX="clang++-6.0",
+        CC="clang-15",
+        CXX="clang++-15",
         chain_lint="t",
     ),
     command_args="--workdir=/usr/src/" + "workdir/" * 15,
@@ -129,12 +129,6 @@ matrix.add_build(
     image="focal",
 )
 
-# RHEL7 clone
-matrix.add_build(
-    name="el7",
-    image="el7",
-)
-
 # RHEL8 clone
 matrix.add_build(
     name="el8",
@@ -148,17 +142,10 @@ matrix.add_build(
     env=dict(CFLAGS="-fanalyzer"),
 )
 
-# Fedora 35
+# Fedora 38 ASan
 matrix.add_build(
-    name="fedora35",
-    image="fedora35",
-    env=dict(CFLAGS="-fanalyzer"),
-)
-
-# Fedora 35 ASan
-matrix.add_build(
-    name="fedora35 - asan",
-    image="fedora35",
+    name="fedora38 - asan",
+    image="fedora38",
     args="--enable-sanitizers"
 )
 print(matrix)
