@@ -57,7 +57,7 @@ struct imp_exec {
     flux_security_t *sec;
     const cf_t *conf;
 
-    uid_t userid;
+    struct passwd *user_pwd;
     json_t *input;
 
     const char *J;
@@ -113,6 +113,7 @@ static void imp_exec_destroy (struct imp_exec *exec)
     if (exec) {
         flux_security_destroy (exec->sec);
         json_decref (exec->input);
+        passwd_destroy (exec->user_pwd);
         passwd_destroy (exec->imp_pwd);
         kv_destroy (exec->args);
         free (exec);
@@ -123,7 +124,6 @@ static struct imp_exec *imp_exec_create (struct imp_state *imp)
 {
     struct imp_exec *exec = calloc (1, sizeof (*exec));
     if (exec) {
-        exec->userid = (uid_t) -1;
         exec->imp = imp;
         exec->sec = sec_init ();
         exec->conf = cf_get_in (imp->conf, "exec");
@@ -147,7 +147,14 @@ static void imp_exec_unwrap (struct imp_exec *exec, const char *J)
         imp_die (1, "exec: signature validation failed: %s",
                  flux_security_last_error (exec->sec));
 
-    exec->userid = (uid_t) userid;
+    if (!(exec->user_pwd = passwd_from_uid (userid))) {
+        char hostname[1024] = "unknown";
+        (void)gethostname (hostname, sizeof (hostname));
+        imp_die (1,
+                 "exec: userid %d is invalid on %s",
+                 (int)userid,
+                 hostname);
+    }
 }
 
 static void imp_exec_init_kv (struct imp_exec *exec, struct kv *kv)
@@ -293,7 +300,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
 
     /* Paranoia checks
      */
-    if (exec->userid == 0)
+    if (exec->user_pwd->pw_uid == 0)
         imp_die (1, "exec: switching to user root not supported");
     if (!imp_exec_shell_allowed (exec))
         imp_die (1, "exec: shell not in allowed-shells list");
@@ -305,8 +312,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     /* Call privileged IMP plugins/containment */
     if (imp_supports_pam (exec)) {
 #if HAVE_PAM
-        struct passwd *user_pwd = passwd_from_uid (exec->userid);
-        if (pam_setup (user_pwd->pw_name) < 0)
+        if (pam_setup (exec->user_pwd->pw_name) < 0)
             imp_die (1, "exec: PAM stack failure");
 #else
         imp_die (1,
@@ -327,7 +333,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
         sigunblock_all ();
 
         /* Irreversibly switch to user */
-        imp_switch_user (exec->userid);
+        imp_switch_user (exec->user_pwd->pw_uid);
 
         /* execute shell (NORETURN) */
         imp_exec (exec);
