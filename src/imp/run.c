@@ -65,7 +65,8 @@
 extern char **environ;
 
 #if CODE_COVERAGE_ENABLED
-extern void __gcov_flush ();
+void __gcov_dump (void);
+void __gcov_reset (void);
 #endif
 
 static const cf_t *imp_run_lookup (struct imp_state *imp,
@@ -183,7 +184,8 @@ imp_run (const char *name,
     args[0] = path;
     args[1] = NULL;
 #if CODE_COVERAGE_ENABLED
-    __gcov_flush ();
+    __gcov_dump ();
+    __gcov_reset ();
 #endif
     execve (path, (char **) args, env);
 
