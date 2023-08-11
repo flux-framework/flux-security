@@ -41,6 +41,7 @@ class BuildMatrix:
         env=None,
         coverage=False,
         platform=None,
+        pam=True,
         command_args="",
     ):
         """Add a build to the matrix.include array"""
@@ -62,6 +63,10 @@ class BuildMatrix:
         create_release = False
         if self.tag and "DISTCHECK" in env:
             create_release = True
+
+        if pam:
+            args += " --enable-pam"
+        command += f" -- {args}"
 
         self.matrix.append(
             {
@@ -86,16 +91,16 @@ class BuildMatrix:
 
 matrix = BuildMatrix()
 
-# Ubuntu: no args
-matrix.add_build(name="bookworm")
+# Debian: no args
+matrix.add_build(name="bookworm", pam=False)
 
-# Ubuntu: 32b
+# Debian: 32b
 matrix.add_build(
     name="bookworm - 32 bit",
     platform="linux/386",
 )
 
-# Ubuntu: gcc-8, content-s3, distcheck
+# Debian: gcc-8, content-s3, distcheck
 matrix.add_build(
     name="bookworm - gcc-12,distcheck",
     env=dict(
@@ -103,9 +108,10 @@ matrix.add_build(
         CXX="g++12",
         DISTCHECK="t",
     ),
+    args="", # --sysconfdir incompatible with distcheck
 )
 
-# Ubuntu: clang-6.0
+# Debian: clang-6.0
 matrix.add_build(
     name="bookworm - clang-15,chain-lint",
     env=dict(
@@ -116,7 +122,7 @@ matrix.add_build(
     command_args="--workdir=/usr/src/" + "workdir/" * 15,
 )
 
-# Ubuntu: coverage
+# Debian: coverage
 matrix.add_build(
     name="coverage",
     coverage=True,
@@ -146,6 +152,7 @@ matrix.add_build(
 matrix.add_build(
     name="fedora38 - asan",
     image="fedora38",
-    args="--enable-sanitizers"
+    args="--enable-sanitizers",
+    pam=False, # asan not compatible with PAM tests
 )
 print(matrix)
