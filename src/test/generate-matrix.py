@@ -91,16 +91,16 @@ class BuildMatrix:
 
 matrix = BuildMatrix()
 
-# Ubuntu: no args
+# Debian: no args
 matrix.add_build(name="bookworm", pam=False)
 
-# Ubuntu: 32b
+# Debian: 32b
 matrix.add_build(
     name="bookworm - 32 bit",
     platform="linux/386",
 )
 
-# Ubuntu: gcc-8, content-s3, distcheck
+# Debian: gcc-8, content-s3, distcheck
 matrix.add_build(
     name="bookworm - gcc-12,distcheck",
     env=dict(
@@ -111,7 +111,7 @@ matrix.add_build(
     args="", # --sysconfdir incompatible with distcheck
 )
 
-# Ubuntu: clang-6.0
+# Debian: clang-6.0
 matrix.add_build(
     name="bookworm - clang-15,chain-lint",
     env=dict(
@@ -122,7 +122,7 @@ matrix.add_build(
     command_args="--workdir=/usr/src/" + "workdir/" * 15,
 )
 
-# Ubuntu: coverage
+# Debian: coverage
 matrix.add_build(
     name="coverage",
     coverage=True,
