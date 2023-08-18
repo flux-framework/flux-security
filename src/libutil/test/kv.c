@@ -17,26 +17,257 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <float.h>
+#include <math.h>
 
 #include "src/libtap/tap.h"
 #include "kv.h"
 
+struct tvec {
+    const char *key;
+    enum kv_type type;
+    union {
+        const char *s;
+        int64_t i;
+        double d;
+        bool b;
+        time_t t;
+    } value;
+    const char *out;
+};
+
+// test vectors from rfc38
+static const struct tvec testvec[] = {
+    { .key = "PATH",
+      .type = KV_STRING,
+      .value.s = "/bin:/usr/bin",
+      .out = "PATH\\0s/bin:/usr/bin\\0"
+    },
+    { .key = "EMPTY_STRING",
+      .type = KV_STRING,
+      .value.s = "",
+      .out = "EMPTY_STRING\\0s\\0"
+    },
+    { .key = "JOB_ID_STRING",
+      .type = KV_STRING,
+      .value.s = "ƒAAUKAY4Co",
+      .out = "JOB_ID_STRING\\0sƒAAUKAY4Co\\0"
+    },
+    { .key = "INT_PLUS",
+      .type = KV_INT64,
+      .value.i = 42,
+      .out = "INT_PLUS\\0i42\\0",
+    },
+    { .key = "INT_MINUS",
+      .type = KV_INT64,
+      .value.i = -42,
+      .out = "INT_MINUS\\0i-42\\0",
+    },
+    { .key = "INT64_MAX",
+      .type = KV_INT64,
+      .value.i = INT64_MAX,
+      .out = "INT64_MAX\\0i9223372036854775807\\0",
+    },
+    { .key = "INT64_MIN",
+      .type = KV_INT64,
+      .value.i = INT64_MIN,
+      .out = "INT64_MIN\\0i-9223372036854775808\\0",
+    },
+    { .key = "DOUBLE",
+      .type = KV_DOUBLE,
+      .value.d = 3.0,
+      .out = "DOUBLE\\0d3.000000\\0",
+    },
+    { .key = "DOUBLE_INF",
+      .type = KV_DOUBLE,
+      .value.d = INFINITY,
+      .out = "DOUBLE_INF\\0dinf\\0",
+    },
+    { .key = "DBL_MIN",
+      .type = KV_DOUBLE,
+      .value.d = DBL_MIN,
+      .out = "DBL_MIN\\0d0.000000\\0",
+    },
+    { .key = "DBL_MAX",
+      .type = KV_DOUBLE,
+      .value.d = DBL_MAX,
+      .out = "DBL_MAX\\0d179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000\\0",
+    },
+    { .key = "MINUS_DBL_MAX",
+      .type = KV_DOUBLE,
+      .value.d = -DBL_MAX,
+      .out = "MINUS_DBL_MAX\\0d-179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000\\0",
+    },
+    { .key = "FALSE",
+      .type = KV_BOOL,
+      .value.b = false,
+      .out = "FALSE\\0bfalse\\0",
+    },
+    { .key = "TRUE",
+      .type = KV_BOOL,
+      .value.b = true,
+      .out = "TRUE\\0btrue\\0",
+    },
+    { .key = "TIMESTAMP",
+      .type = KV_TIMESTAMP,
+      .value.t = 1692370785,
+      .out = "TIMESTAMP\\0t2023-08-18T14:59:45Z\\0",
+    },
+};
+
+static void stringify_kvbuf (const char *inbuf,
+                             size_t insize,
+                             char *outbuf,
+                             size_t outsize)
+{
+    char *outp = outbuf;
+
+    for (const char *inp = inbuf; inp - inbuf < insize; inp++) {
+        if (outp - outbuf >= outsize - 1)
+            BAIL_OUT ("stringify_kvbuf: overflow");
+        if (*inp == '\0') {
+            *outp++ = '\\';
+            *outp++ = '0';
+        }
+        else
+            *outp++ = *inp;
+    }
+    *outp++ = '\0';
+}
+
 static void diag_kv (struct kv *kv)
 {
-    const char *buf;
-    int len;
-    int i;
+    const char *kvbuf;
+    int kvlen;
+    char buf[1024];
 
-    if (kv_encode (kv, &buf, &len) < 0)
-        BAIL_OUT ("diag_kv: %s", strerror (errno));
-    printf ("# ");
-    for (i = 0; i < len; i++) {
-        if (buf[i] == '\0')
-            printf ("\\0");
-        else
-            putchar (buf[i]);
+    if (kv_encode (kv, &kvbuf, &kvlen) < 0)
+        BAIL_OUT ("diag_kv: kv_encode: %s", strerror (errno));
+    stringify_kvbuf (kvbuf, kvlen, buf, sizeof (buf));
+    diag ("%s", buf);
+}
+
+static int put_tvec (struct kv *kv, const struct tvec *t)
+{
+    int rc = -1;
+    switch (t->type) {
+        case KV_STRING:
+            rc = kv_put (kv, t->key, t->type, t->value.s);
+            break;
+        case KV_INT64:
+            rc = kv_put (kv, t->key, t->type, t->value.i);
+            break;
+        case KV_DOUBLE:
+            rc = kv_put (kv, t->key, t->type, t->value.d);
+            break;
+        case KV_BOOL:
+            rc = kv_put (kv, t->key, t->type, t->value.b);
+            break;
+        case KV_TIMESTAMP:
+            rc = kv_put (kv, t->key, t->type, t->value.t);
+            break;
+        case KV_UNKNOWN:
+            break;
     }
-    putchar ('\n');
+    return rc;
+}
+
+static int check_tvec (struct kv *kv, const struct tvec *t)
+{
+    struct tvec tmp;
+
+    switch (t->type) {
+        case KV_STRING:
+            if (kv_get (kv, t->key, t->type, &tmp.value.s) < 0
+                || strcmp (tmp.value.s, t->value.s) != 0)
+                return -1;
+            break;
+        case KV_INT64:
+            if (kv_get (kv, t->key, t->type, &tmp.value.i) < 0
+                || tmp.value.i != t->value.i)
+                return -1;
+            break;
+        case KV_DOUBLE:
+            if (kv_get (kv, t->key, t->type, &tmp.value.d) < 0
+                || trunc (tmp.value.d*1E6) != trunc (t->value.d*1E6))
+                return -1;
+            break;
+        case KV_BOOL:
+            if (kv_get (kv, t->key, t->type, &tmp.value.b) < 0
+                || tmp.value.b != t->value.b)
+                return -1;
+            break;
+        case KV_TIMESTAMP:
+            if (kv_get (kv, t->key, t->type, &tmp.value.t) < 0
+                || tmp.value.t != t->value.t)
+                return -1;
+            break;
+        case KV_UNKNOWN:
+            return -1;
+    }
+    return 0;
+}
+
+static bool test_rfc38_one (const struct tvec *t)
+{
+    struct kv *kv;
+    struct kv *kv2 = NULL;
+    const char *kvbuf;
+    int kvlen;
+    char buf[1024];
+    bool result = false;
+
+    if (!(kv = kv_create ()))
+        BAIL_OUT ("kv_create failed");
+    if (put_tvec (kv, t) < 0) {
+        diag ("kv_put %s failed", t->key);
+        goto out;
+    }
+    if (kv_encode (kv, &kvbuf, &kvlen) < 0) {
+        diag ("kv_encode %s failed", t->key);
+        goto out;
+    }
+    stringify_kvbuf (kvbuf, kvlen, buf, sizeof (buf));
+    if (strcmp (buf, t->out) != 0) {
+        diag ("kv_encode %s: expected '%s' got '%s'", t->key, t->out, buf);
+        goto out;
+    }
+    if (!(kv2 = kv_decode (kvbuf, kvlen))) {
+        diag ("kv_decode %s failed", t->key);
+        goto out;
+    }
+    if (!kv_equal (kv, kv2)) {
+        diag ("kv_equal after encode/decode failed");
+        goto out;
+    }
+    result = true;
+out:
+    kv_destroy (kv);
+    kv_destroy (kv2);
+    return result;
+}
+
+static void test_rfc38 (void)
+{
+    for (int i = 0; i < sizeof (testvec) / sizeof (testvec[0]); i++) {
+        ok (test_rfc38_one (&testvec[i]) == true,
+            "encode/decode %s works", testvec[i].key);
+    }
+
+    /* now all test vectors in one string */
+    struct kv *kv;
+
+    if (!(kv = kv_create ()))
+        BAIL_OUT ("kv_create failed");
+    for (int i = 0; i < sizeof (testvec) / sizeof (testvec[0]); i++) {
+        ok (put_tvec (kv, &testvec[i]) == 0,
+            "kv_put %s to combined kv works", testvec[i].key);
+    }
+    for (int i = 0; i < sizeof (testvec) / sizeof (testvec[0]); i++) {
+        ok (check_tvec (kv, &testvec[i]) == 0,
+            "kv_get %s from combined kv works", testvec[i].key);
+    }
+    kv_destroy (kv);
 }
 
 static void simple_test (void)
@@ -624,6 +855,7 @@ int main (int argc, char *argv[])
     join_split ();
     test_expand ();
     test_argv ();
+    test_rfc38 ();
 
     done_testing ();
 }
