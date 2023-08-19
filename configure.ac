@@ -64,6 +64,8 @@ AC_DEFINE([SANITIZERS_ENABLED], 1,
 [AC_MSG_RESULT(no)])
 AM_CONDITIONAL([SANITIZERS_ENABLED], [test "x$enable_sanitizers" != "xno" ])
 
+AC_CHECK_LIB(m, floor)
+
 #
 #  Checks for programs
 #

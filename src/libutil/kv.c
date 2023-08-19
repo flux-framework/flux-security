@@ -204,7 +204,7 @@ static int kv_put_raw (struct kv *kv, const char *key, enum kv_type type,
 
 int kv_vput (struct kv *kv, const char *key, enum kv_type type, va_list ap)
 {
-    char s[80];
+    char s[512]; // -DBL_MAX with 6 digit precision + \0 is 318 characters
     const char *val = NULL;
 
     if (!kv || !valid_key (key))
@@ -219,7 +219,7 @@ int kv_vput (struct kv *kv, const char *key, enum kv_type type, va_list ap)
             val = s;
             break;
         case KV_DOUBLE:
-            if (vsnprintf (s, sizeof (s), "%f", ap) >= sizeof (s))
+            if (vsnprintf (s, sizeof (s), "%.6f", ap) >= sizeof (s))
                 goto inval;
             val = s;
             break;
