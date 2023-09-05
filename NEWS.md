@@ -1,3 +1,15 @@
+flux-security version 0.10.0 - 2023-05-05
+-----------------------------------------
+
+## Fixes
+ * imp: fix segfault on missing user (#171)
+
+## Build/Test
+ * testsuite: cover rfc38 kv test vectors (#173)
+ * ci: add `--enable-pam` to most CI builds (#172)
+ * ci: update build matrix to more closely match flux-core (#169)
+
+
 flux-security version 0.9.0 - 2023-05-15
 ----------------------------------------
 
