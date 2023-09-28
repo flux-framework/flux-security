@@ -159,7 +159,7 @@ test "$(FLUX_IMP_CONFIG_PATTERN=sign-none.toml ./flux-imp kill 0 $$ \
 waitfile()
 {
 	count=0
-	while ! grep "$2" $1 >/dev/null 2>&12>&1; do
+	while ! grep "$2" $1 >/dev/null 2>&1; do
 	    sleep 0.2
 	    count=$(($count + 1))
 	    test $count -gt 20 && break
