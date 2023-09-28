@@ -175,7 +175,7 @@ test_expect_success NO_CHAIN_LINT,SUID_ENABLED,USER_CGROUP \
 	printf "\$PPID\n" >$(pwd)/sleeper.pid
 	/bin/sleep "\$@" &
 	pid=\$! &&
-	trap "echo got SIGTERM; kill \$pid" SIGTERM
+	trap "echo got SIGTERM; kill \$pid" TERM
 	wait
 	echo sleep exited with \$? >&2
 	EOF
