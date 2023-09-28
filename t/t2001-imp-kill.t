@@ -161,7 +161,7 @@ waitfile()
 	count=0
 	while ! grep "$2" $1 >/dev/null 2>&12>&1; do
 	    sleep 0.2
-	    let count++
+	    count=$(($count + 1))
 	    test $count -gt 20 && break
 	done
 	grep "$2" $1 >/dev/null
