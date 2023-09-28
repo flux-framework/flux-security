@@ -2,21 +2,20 @@
 # Prologue
 #
 
-# XXX: replace hard-coded version with git-describe 
 AC_INIT([flux-security],
          m4_esyscmd([git describe --always | awk '/.*/ {sub(/^v/, ""); printf "%s",$1; exit}']))
 
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_SRCDIR([NEWS.md])
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
 #
 #  Automake support:
 #
 AM_INIT_AUTOMAKE([subdir-objects tar-pax foreign])
 AM_SILENT_RULES([yes])
-AM_CONFIG_HEADER([config/config.h])
+AC_CONFIG_HEADERS([config/config.h])
 AM_MAINTAINER_MODE([enable])
 
 AC_DEFINE([_GNU_SOURCE], 1,
@@ -69,7 +68,7 @@ AC_CHECK_LIB(m, floor)
 #
 #  Checks for programs
 #
-AC_PROG_CC_C99
+m4_version_prereq(2.70, [AC_PROG_CC], [AC_PROG_CC_C99])
 AM_PROG_CC_C_O
 AC_PROG_AWK
 AC_ARG_ENABLE([docs],
@@ -119,7 +118,6 @@ LT_INIT
 #
 #  Checks for header files
 #
-AC_HEADER_STDC
 AC_CHECK_HEADERS( \
   [linux/magic.h] \
 )
