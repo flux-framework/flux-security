@@ -2,7 +2,6 @@
 # Prologue
 #
 
-# XXX: replace hard-coded version with git-describe 
 AC_INIT([flux-security],
          m4_esyscmd([git describe --always | awk '/.*/ {sub(/^v/, ""); printf "%s",$1; exit}']))
 
