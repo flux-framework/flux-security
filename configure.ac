@@ -9,7 +9,7 @@ AC_INIT([flux-security],
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([config])
 AC_CONFIG_SRCDIR([NEWS.md])
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
 #
 #  Automake support:
