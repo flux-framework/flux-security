@@ -69,7 +69,7 @@ AC_CHECK_LIB(m, floor)
 #
 #  Checks for programs
 #
-AC_PROG_CC_C99
+m4_version_prereq(2.70, [AC_PROG_CC], [AC_PROG_CC_C99])
 AM_PROG_CC_C_O
 AC_PROG_AWK
 AC_ARG_ENABLE([docs],
