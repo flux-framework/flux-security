@@ -159,9 +159,9 @@ test "$(FLUX_IMP_CONFIG_PATTERN=sign-none.toml ./flux-imp kill 0 $$ \
 waitfile()
 {
 	count=0
-	while ! grep "$2" $1 >/dev/null 2>&12>&1; do
+	while ! grep "$2" $1 >/dev/null 2>&1; do
 	    sleep 0.2
-	    let count++
+	    count=$(($count + 1))
 	    test $count -gt 20 && break
 	done
 	grep "$2" $1 >/dev/null
@@ -174,8 +174,8 @@ test_expect_success NO_CHAIN_LINT,SUID_ENABLED,USER_CGROUP \
 	echo "\$@"
 	printf "\$PPID\n" >$(pwd)/sleeper.pid
 	/bin/sleep "\$@" &
-	pid=$! &&
-	trap "echo got SIGTERM; kill \$pid" SIGTERM
+	pid=\$! &&
+	trap "echo got SIGTERM; kill \$pid" TERM
 	wait
 	echo sleep exited with \$? >&2
 	EOF
