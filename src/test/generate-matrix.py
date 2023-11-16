@@ -155,4 +155,11 @@ matrix.add_build(
     args="--enable-sanitizers",
     pam=False, # asan not compatible with PAM tests
 )
+
+# alpine
+matrix.add_build(
+    name="alpine",
+    image="alpine",
+)
+
 print(matrix)
