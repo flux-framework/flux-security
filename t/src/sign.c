@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include "src/lib/context.h"
 #include "src/lib/sign.h"
