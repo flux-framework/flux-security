@@ -24,14 +24,12 @@
 struct passwd *getpwuid (uid_t uid)
 {
     const char *filename;
-    static char buf[4096];
-    static struct passwd pw;
     struct passwd *pwp = NULL;
 
     if ((filename = getenv ("TEST_PASSWD_FILE"))) {
         FILE *f;
         if ((f = fopen (filename, "r"))) {
-            while (fgetpwent_r (f, &pw, buf, sizeof (buf), &pwp) == 0) {
+            while ((pwp = fgetpwent (f))) {
                 if (pwp->pw_uid == uid)
                     break;
             }
@@ -39,7 +37,7 @@ struct passwd *getpwuid (uid_t uid)
         }
     }
     else
-        getpwuid_r (uid, &pw, buf, sizeof (buf), &pwp);
+        pwp = getpwuid (uid);
 
     if (pwp == NULL)
         errno = ENOENT;
