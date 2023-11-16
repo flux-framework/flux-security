@@ -79,7 +79,7 @@ static time_t strtotime (const char *s)
 {
     struct tm tm;
     time_t t;
-    if (!strptime (s, "%FT%TZ", &tm))
+    if (!strptime (s, "%Y-%m-%dT%TZ", &tm))
         BAIL_OUT ("strptime: %s failed", s);
     if ((t = timegm (&tm)) < 0)
         BAIL_OUT ("timegm: %s failed", s);
