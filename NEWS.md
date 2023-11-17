@@ -1,3 +1,14 @@
+flux-security version 0.11.0 - 2023-12-17
+-----------------------------------------
+
+## Fixes
+ * port to musl and add alpine CI build (#182)
+
+## Build/Test
+ * testsuite: fix imp kill test (#180)
+ * build: address warnings from autogen.sh (#179)
+
+
 flux-security version 0.10.0 - 2023-05-05
 -----------------------------------------
 
