@@ -29,6 +29,12 @@
 #ifdef HAVE_LINUX_MAGIC_H
 #include <linux/magic.h>
 #endif
+#ifndef TMPFS_MAGIC
+#define TMPFS_MAGIC 0x01021994 /* from linux/magic.h */
+#endif
+#ifndef CGROUP_SUPER_MAGIC
+#define CGROUP_SUPER_MAGIC 0x27e0eb
+#endif
 
 #include <pwd.h>
 #include <signal.h>

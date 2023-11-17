@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <jansson.h>
+#include <glob.h>
 
 #include "src/libtap/tap.h"
 #include "cf.h"
@@ -79,7 +80,7 @@ static time_t strtotime (const char *s)
 {
     struct tm tm;
     time_t t;
-    if (!strptime (s, "%FT%TZ", &tm))
+    if (!strptime (s, "%Y-%m-%dT%TZ", &tm))
         BAIL_OUT ("strptime: %s failed", s);
     if ((t = timegm (&tm)) < 0)
         BAIL_OUT ("timegm: %s failed", s);
@@ -528,6 +529,7 @@ void test_update_glob (void)
     char path3[PATH_MAX + 1];
     char invalid[PATH_MAX + 1];
     char p [8192];
+    glob_t gl;
 
     cf_t *cf;
     const cf_t *cf2, *cf3;
@@ -567,18 +569,24 @@ void test_update_glob (void)
     ok ((cf3 = cf_get_in (cf, "tab3")) != NULL,
         "found tab3 table in cf");
 
+
     errno = 0;
     ok ((cf_update_glob (cf, "/noexist*", &error) == 0),
         "cf_update_glob returns 0 on no match");
     diag ("%s: %d: %s", error.filename, error.lineno, error.errbuf);
     like (error.errbuf, "[nN]o [mM]atch", "got expected error text");
 
-
+    /* Only run the following tests if this implementation of glob(3)
+     * returns GLOB_ABORTED when parent dir does not exist. This occurs
+     * for example on the musl libc version of glob(3).
+     */
+    skip (glob ("/noexist/*", GLOB_ERR, NULL, &gl) != GLOB_ABORTED, 2);
     errno = 0;
     ok ((cf_update_glob (cf, "/noexist/*", &error) < 0) && errno == EINVAL,
         "cf_update_glob fails on read error");
     diag ("%s: %d: %s", error.filename, error.lineno, error.errbuf);
     like (error.errbuf, "[rR]ead [eE]rror", "got expected error text");
+    end_skip;
 
     cf_destroy (cf);
 

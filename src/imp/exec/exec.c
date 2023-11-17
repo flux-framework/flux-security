@@ -32,7 +32,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <sys/types.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <jansson.h>
 
 #include "src/libutil/kv.h"

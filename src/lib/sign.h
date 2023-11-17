@@ -11,6 +11,8 @@
 #ifndef _FLUX_SECURITY_SIGN_H
 #define _FLUX_SECURITY_SIGN_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
