@@ -34,6 +34,7 @@
 #ifndef CGROUP_SUPER_MAGIC
 #define CGROUP_SUPER_MAGIC 0x27e0eb
 #endif
+#include <signal.h>
 
 #include "src/libutil/strlcpy.h"
 
@@ -187,6 +188,44 @@ struct cgroup_info *cgroup_info_create (void)
         cgroup->use_cgroup_kill = true;
 
     return cgroup;
+}
+
+int cgroup_kill (struct cgroup_info *cgroup, int sig)
+{
+    int count = 0;
+    int rc = 0;
+    int saved_errno = 0;
+    char path [PATH_MAX+14]; /* cgroup->path[PATH_MAX] + "/cgroup.procs" */
+    FILE *fp;
+    unsigned long child;
+    pid_t current_pid = getpid ();
+
+    /* Note: path is guaranteed to have enough space to append "/cgroup.procs"
+     */
+    (void) snprintf (path, sizeof (path), "%s/cgroup.procs", cgroup->path);
+
+    if (!(fp = fopen (path, "r")))
+        return -1;
+    while (fscanf (fp, "%lu", &child) == 1) {
+        pid_t pid = child;
+        if (pid == current_pid)
+            continue;
+        if (kill (pid, sig) < 0) {
+            saved_errno = errno;
+            rc = -1;
+            imp_warn ("Failed to send signal %d to pid %lu",
+                      sig,
+                      child);
+            continue;
+        }
+        count++;
+    }
+    fclose (fp);
+    if (rc < 0 && count == 0) {
+        count = -1;
+        errno = saved_errno;
+    }
+    return count;
 }
 
 /* vi: ts=4 sw=4 expandtab

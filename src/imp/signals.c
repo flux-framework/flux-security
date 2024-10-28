@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "signals.h"
+#include "pidinfo.h"
 #include "imp_log.h"
 
 static const struct imp_state *imp_state = NULL;
@@ -45,7 +46,27 @@ void imp_sigunblock_all (void)
 
 static void fwd_signal (int signum)
 {
-    if (imp_child > 0)
+    if (signum == SIGUSR1) {
+        int count = -1;
+
+        /* RFC 15 specifies that SIGUSR1 is a surrogate for SIGKILL, and
+         * that the IMP SHALL deliver the signal to all processes in the
+         * job's container (using cgroup.procs if able).
+         */
+        if (imp_state->cgroup->use_cgroup_kill)
+            count = cgroup_kill (imp_state->cgroup, SIGKILL);
+
+        /* If cgroup wasn't used or fails, try with pid_kill_children
+         */
+        if (count < 0)
+            count = pid_kill_children (getpid (), SIGKILL);
+
+        /* O/w, log an error, not much more to do
+         */
+        if (count < 0)
+            imp_warn ("Failed to forward SIGKILL: %s", strerror (errno));
+    }
+    else if (imp_child > 0)
         kill (imp_child, signum);
 }
 
@@ -63,6 +84,7 @@ void imp_setup_signal_forwarding (struct imp_state *imp)
         SIGWINCH,
         SIGTTIN,
         SIGTTOU,
+        SIGUSR1,
     };
     int nsignals =  sizeof (signals) / sizeof (signals[0]);
 

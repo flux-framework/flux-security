@@ -22,4 +22,9 @@ struct cgroup_info *cgroup_info_create (void);
 
 void cgroup_info_destroy (struct cgroup_info *cgroup);
 
+/*  Send signal to all pids (excluding the current pid) in the
+ *  current cgroup.
+ */
+int cgroup_kill (struct cgroup_info *cgroup, int sig);
+
 #endif /* !HAVE_IMP_CGROUP_H */
