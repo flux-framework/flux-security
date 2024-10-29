@@ -26,4 +26,9 @@ void imp_sigblock_all (void);
 
 void imp_sigunblock_all (void);
 
+/*  Set default signal disposition and then raise signal 'sig'.
+ *  If raise fails for any reason, then exit with standard 128+sig.
+ */
+void imp_raise (int sig) __attribute__ ((noreturn));;
+
 #endif /* !HAVE_IMP_SIGNALS_H */

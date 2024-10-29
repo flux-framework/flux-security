@@ -303,7 +303,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     if (WIFEXITED (status))
         exit (WEXITSTATUS (status));
     else if (WIFSIGNALED (status))
-        exit (WTERMSIG (status) + 128);
+        imp_raise (WTERMSIG (status));
     else
         exit (1);
 

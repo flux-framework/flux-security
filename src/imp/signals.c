@@ -12,6 +12,7 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
@@ -105,6 +106,17 @@ void imp_setup_signal_forwarding (struct imp_state *imp)
     }
     if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
        imp_die (1, "failed to block signals: %s", strerror (errno));
+}
+
+void imp_raise (int sig)
+{
+    signal (sig, SIG_DFL);
+    if (raise (sig) == 0)
+        pause ();
+    /*  If we get here, either raise(3) failed or for some reason signal
+     *  failed to kill the IMP during pause(). Exit with standard 128+sig.
+     */
+    imp_die (128 + sig, "failed to raise signal %d", sig);
 }
 
 /* vi: ts=4 sw=4 expandtab
