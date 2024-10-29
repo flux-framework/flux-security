@@ -250,6 +250,87 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: setuid IMP lingers' '
 	kill -TERM $pid &&
 	test_expect_code 143 wait $imp_pid
 '
+test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: SIGUSR1 sends SIGKILL' '
+	imp_exec_sign_none $(pwd)/sleeper.sh 15 >sigkill.out 2>&1 &
+	imp_pid=$! &&
+	test_when_finished "rm -f sleeper.pid" &&
+	wait_for_file sleeper.pid &&
+	test -f sleeper.pid &&
+	pid=$(cat sleeper.pid) &&
+	test_debug "echo pid=$pid; pstree -Tplu $imp_pid" &&
+	kill -USR1 $pid &&
+	test_expect_code 137 wait $imp_pid
+'
+# Notes about cgroup kill testing below:
+# - systemd-run is used as a convenient way to execute the IMP inside a
+#   cgroup named with imp-shell prefix defined in RFC 15.
+# - systemd-run is run with --collect so that a failure shouldn't leave
+#   a stale transient unit on the system
+# - systemd-run is run under sudo instead of `systemd-run sudo flux-imp`
+#   because the IMP will send SIGKILL to all processes except itself in the
+#   cgroup.procs file. If run directly under sudo, then sudo is a parent of
+#   the IMP in the cgroup and gets SIGKILLed.
+#
+command -v systemd-run >/dev/null 2>&1  \
+  && test_have_prereq SUDO \
+  && $SUDO systemd-run --collect /bin/true >/dev/null 2>&1 \
+  && test_set_prereq SYSTEMD_RUN
+
+test_expect_success SUDO,NO_CHAIN_LINT,SYSTEMD_RUN \
+	'flux-imp exec: SIGURS1 sends SIGKILL using cgroup kill' '
+	FLUX_IMP_CONFIG_PATTERN=$(pwd)/sign-none.toml \
+	  fake_imp_input foo | \
+		$SUDO systemd-run --collect --scope \
+			--unit=imp-shell-$$ \
+			-E FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+				$flux_imp exec $(pwd)/sleeper.sh 5 &
+	pid=$! &&
+	test_when_finished "rm -f sleeper.pid" &&
+	wait_for_file sleeper.pid &&
+	kill -USR1 $(cat sleeper.pid) &&
+	test_expect_code 137 wait $pid
+'
+
+CGROUP_PATH="$(awk '/^cgroup2/ {print $2}' /proc/self/mounts)/imp-shell.$$"
+test_have_prereq SUDO &&
+ $SUDO mkdir $CGROUP_PATH &&
+ test_set_prereq CGROUPFS &&
+ cleanup "$SUDO rmdir $CGROUP_PATH"
+
+cat <<'EOF' >run-in-cgroup.sh
+#!/bin/sh
+path=$1
+shift
+test -d $path || mkdir -p $path
+echo "moving pid $$ to $path" >&2
+echo $$ >${path}/cgroup.procs
+echo "running $@ as $(id -u)" >&2
+exec "$@"
+EOF
+chmod +x run-in-cgroup.sh
+
+#  Rewrite sleeper script so it results in a hierarchy of processes
+cat <<EOF>sleeper.sh
+#!/bin/sh
+printf "\$PPID\n" >$(pwd)/sleeper.pid
+(/bin/sleep "\$@")
+EOF
+chmod +x sleeper.sh
+
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
+	'flux-imp exec: SIGUSR1 sends SIGKILL via cgroup kill' '
+	fake_input_sign_none | \
+		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+			./run-in-cgroup.sh "$CGROUP_PATH" \
+				$flux_imp exec $(pwd)/sleeper.sh 15 &
+	imp_pid=$! &&
+	test_when_finished "rm -f sleeper.pid" &&
+	wait_for_file sleeper.pid &&
+	kill -USR1 $(cat sleeper.pid) &&
+	test_expect_code 137 wait $imp_pid &&
+	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
+'
+
 $flux_imp version | grep -q pam || test_set_prereq NO_PAM
 test_expect_success NO_PAM,SUDO 'flux-imp exec: fails if not built with PAM but pam-support=true' '
 	( export FLUX_IMP_CONFIG_PATTERN=pam-test.toml &&
