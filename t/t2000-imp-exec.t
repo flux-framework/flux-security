@@ -245,7 +245,6 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: setuid IMP lingers' '
         test_debug "cat sleeper.pid"
 	test -f sleeper.pid &&
 	pid=$(cat sleeper.pid) &&
-	test_debug "pstree -lup $pid" &&
 	test $(ps --no-header -o comm -p ${pid}) = "flux-imp" &&
 	kill -TERM $pid &&
 	test_expect_code 143 wait $imp_pid
@@ -257,7 +256,6 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: SIGUSR1 sends SIGKILL' '
 	wait_for_file sleeper.pid &&
 	test -f sleeper.pid &&
 	pid=$(cat sleeper.pid) &&
-	test_debug "echo pid=$pid; pstree -Tplu $imp_pid" &&
 	kill -USR1 $pid &&
 	test_expect_code 137 wait $imp_pid
 '
