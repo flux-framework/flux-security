@@ -177,7 +177,7 @@ else
     docker run --rm \
         --workdir=$WORKDIR \
         --volume=$TOP:$WORKDIR \
-        -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         ${PLATFORM} \
         $MOUNT_HOME_ARGS \
         -e CC \
