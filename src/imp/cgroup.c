@@ -44,6 +44,13 @@
 #include "cgroup.h"
 #include "imp_log.h"
 
+static char *remove_leading_dotdot (char *relpath)
+{
+    while (strncmp (relpath, "/..", 3) == 0)
+        relpath += 3;
+    return relpath;
+}
+
 /*
  *  Look up the current cgroup relative path from /proc/self/cgroup.
  *
@@ -79,6 +86,11 @@ static int cgroup_init_path (struct cgroup_info *cgroup)
 
         /* Nullify subsys, relpath is already nul-terminated at newline */
         *(relpath++) = '\0';
+
+        /* Remove leading /.. in relpath. This could be due to cgroup
+         * mounted in a container.
+         */
+        relpath = remove_leading_dotdot (relpath);
 
         /*  If unified cgroups are being used, then stop when we find
          *   subsys="". Otherwise stop at subsys="name=systemd":
