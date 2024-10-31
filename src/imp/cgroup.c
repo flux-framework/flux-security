@@ -34,6 +34,9 @@
 #ifndef CGROUP_SUPER_MAGIC
 #define CGROUP_SUPER_MAGIC 0x27e0eb
 #endif
+#ifndef CGROUP2_SUPER_MAGIC
+#define CGROUP2_SUPER_MAGIC 0x63677270
+#endif
 #include <signal.h>
 
 #include "src/libutil/strlcpy.h"
@@ -123,7 +126,6 @@ static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
     if (statfs (cg->mount_dir, &fs) < 0)
         return -1;
 
-#ifdef CGROUP2_SUPER_MAGIC
     /* if cgroup2 fs mounted: unified hierarchy for all users of cgroupfs
      */
     if (fs.f_type == CGROUP2_SUPER_MAGIC)
@@ -141,7 +143,6 @@ static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
     if (fs.f_type == CGROUP2_SUPER_MAGIC)
         return 0;
 
-#endif /* CGROUP2_SUPER_MAGIC */
     /*  O/w, if /sys/fs/cgroup is mounted as tmpfs, we need to check
      *   for /sys/fs/cgroup/systemd mounted as cgroupfs (legacy).
      */
