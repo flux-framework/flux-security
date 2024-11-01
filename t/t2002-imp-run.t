@@ -49,6 +49,8 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	path = "$TESTDIR/test.sh"
 	[run.allowednotset]
 	path = "$TESTDIR/test.sh"
+	[run.sleep]
+	path = "$TESTDIR/sleep.sh"
 	EOF
 '
 test_expect_success 'create test shell scripts' '
@@ -61,6 +63,12 @@ test_expect_success 'create test shell scripts' '
 	env
 	EOF
 	chmod +x $TESTDIR/test.sh &&
+	cat <<-EOF >$TESTDIR/sleep.sh &&
+	#!/bin/sh
+	echo \$\$ >sleep.pid
+	exec sleep 30
+	EOF
+	chmod +x $TESTDIR/sleep.sh &&
 	touch $TESTDIR/noexec.sh &&
 	chmod 600 $TESTDIR/noexec.sh
 '
@@ -157,6 +165,26 @@ test_expect_success SUDO 'flux-imp run allows FLUX_JOB_ID and FLUX_JOB_USERID' '
 	    $flux_imp run test >sudo-run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_ID=1234 sudo-run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_USERID=$(id -u) sudo-run-test-uid-jobid.out
+'
+
+wait_for_file() {
+        count=0 &&
+        while ! test -f $1; do
+            sleep 0.1
+            count=$((count+1))
+            test $count -gt 20 && break
+            test_debug "echo retrying count=${count}"
+        done
+}
+test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp run: setuid IMP lingers' '
+	$SUDO $flux_imp run sleep &
+	imp_pid=$! &&
+	test_when_finished "rm -f sleep.pid" &&
+	wait_for_file sleep.pid &&
+	pid=$(cat sleep.pid) &&
+	test $(ps --no-header -o comm -p ${pid}) = "flux-imp" &&
+	kill -TERM $imp_pid &&
+	test_expect_code 143 wait $imp_pid
 '
 test_expect_success SUDO 'flux-imp run will not run file with bad ownership' '
 	$SUDO chown $USER $TESTDIR/test.sh &&
