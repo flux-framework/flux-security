@@ -329,6 +329,22 @@ test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
 	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
 '
 
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
+	'flux-imp exec: SIGUSR1 waits for cgroup to be empty' '
+	fake_input_sign_none | \
+		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+			./run-in-cgroup.sh "$CGROUP_PATH" \
+				$flux_imp exec $(pwd)/sleeper.sh 15 &
+	imp_pid=$! &&
+	test_when_finished "rm -f sleeper.pid" &&
+	wait_for_file sleeper.pid &&
+	kill -TERM $(cat sleeper.pid) &&
+	sleep .5 &&
+	kill -USR1 $(cat sleeper.pid) &&
+	test_expect_code 143 wait $imp_pid &&
+	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
+'
+
 $flux_imp version | grep -q pam || test_set_prereq NO_PAM
 test_expect_success NO_PAM,SUDO 'flux-imp exec: fails if not built with PAM but pam-support=true' '
 	( export FLUX_IMP_CONFIG_PATTERN=pam-test.toml &&
