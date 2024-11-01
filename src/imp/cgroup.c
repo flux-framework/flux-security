@@ -241,5 +241,28 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
     return count;
 }
 
+int cgroup_wait_for_empty (struct cgroup_info *cgroup)
+{
+    int n;
+
+    /*  Only wait for empty cgroup if cgroup kill is enabled.
+     */
+    if (!cgroup->use_cgroup_kill)
+        return 0;
+
+    while ((n = cgroup_kill (cgroup, 0)) > 0) {
+        /*  Note: inotify/poll() do not work on the cgroup.procs virtual
+         *  file. Therefore, wait at most 1s and check to see if the cgroup
+         *  is empty again. If the job execution system requests a signal to
+         *  be delivered then the sleep will be interrupted, in which case a
+         *  a small delay is added in hopes that any terminated processes
+         *  will have been removed from cgroup.procs by then.
+         */
+        if (usleep (1e6) < 0 && errno == EINTR)
+            usleep (2000);
+    }
+    return 0;
+}
+
 /* vi: ts=4 sw=4 expandtab
  */

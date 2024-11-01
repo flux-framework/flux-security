@@ -93,7 +93,7 @@ void imp_setup_signal_forwarding (struct imp_state *imp)
 
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = fwd_signal;
-    sa.sa_flags = SA_RESTART;
+    sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
 
     sigfillset (&mask);

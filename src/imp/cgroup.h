@@ -27,4 +27,8 @@ void cgroup_info_destroy (struct cgroup_info *cgroup);
  */
 int cgroup_kill (struct cgroup_info *cgroup, int sig);
 
+/*  Wait for all processes in cgroup (except this one) to exit.
+ */
+int cgroup_wait_for_empty (struct cgroup_info *cgroup);
+
 #endif /* !HAVE_IMP_CGROUP_H */
