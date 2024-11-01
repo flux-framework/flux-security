@@ -46,6 +46,7 @@
 #include "passwd.h"
 #include "user.h"
 #include "safe_popen.h"
+#include "signals.h"
 
 #if HAVE_PAM
 #include "pam.h"
@@ -66,8 +67,6 @@ struct imp_exec {
     const void *spec;
     int specsz;
 };
-
-static pid_t imp_child = (pid_t) -1;
 
 extern const char *imp_get_security_config_pattern (void);
 extern int imp_get_security_flags (void);
@@ -225,68 +224,10 @@ static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)
     imp_die (exit_code, "%s: %s", exec->shell, strerror (errno));
 }
 
-static void fwd_signal (int signal)
-{
-    if (imp_child > 0)
-        kill (imp_child, signal);
-}
-
-/*  Setup signal handlers in the IMP for common signals which
- *   we want to forward to any child process.
- */
-static void setup_signal_forwarding (void)
-{
-    struct sigaction sa;
-    sigset_t mask;
-    int i;
-    int signals[] = {
-        SIGTERM,
-        SIGINT,
-        SIGHUP,
-        SIGCONT,
-        SIGALRM,
-        SIGWINCH,
-        SIGTTIN,
-        SIGTTOU,
-    };
-    int nsignals =  sizeof (signals) / sizeof (signals[0]);
-
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = fwd_signal;
-    sa.sa_flags = SA_RESTART;
-    sigemptyset(&sa.sa_mask);
-
-    sigfillset (&mask);
-    for (i = 0; i < nsignals; i++) {
-        sigdelset (&mask, signals[i]);
-        if (sigaction(signals[i], &sa, NULL) < 0)
-            imp_warn ("sigaction (signal=%d): %s",
-                      signals[i],
-                      strerror (errno));
-    }
-    if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
-       imp_die (1, "failed to block signals: %s", strerror (errno));
-}
-
-static void sigblock_all (void)
-{
-    sigset_t mask;
-    sigfillset (&mask);
-    if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
-        imp_die (1, "failed to block signals: %s", strerror (errno));
-}
-
-static void sigunblock_all (void)
-{
-    sigset_t mask;
-    sigemptyset (&mask);
-    if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
-        imp_die (1, "failed to unblock signals: %s", strerror (errno));
-}
-
 int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
 {
     int status;
+    pid_t child;
     struct imp_exec *exec = imp_exec_create (imp);
     if (!exec)
         imp_die (1, "exec: failed to initialize state");
@@ -322,15 +263,17 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     }
 
     /* Block signals so parent IMP isn't unduly terminated */
-    sigblock_all ();
+    imp_sigblock_all ();
 
-    if ((imp_child = fork ()) < 0)
+    if ((child = fork ()) < 0)
         imp_die (1, "exec: fork: %s", strerror (errno));
 
-    if (imp_child == 0) {
+    imp_set_signal_child (child);
+
+    if (child == 0) {
 
         /* unblock all signals */
-        sigunblock_all ();
+        imp_sigunblock_all ();
 
         /* Irreversibly switch to user */
         imp_switch_user (exec->user_pwd->pw_uid);
@@ -342,10 +285,10 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     /* Ensure common signals received by this IMP are forwarded to
      *  the child process
      */
-    setup_signal_forwarding ();
+    imp_setup_signal_forwarding (imp);
 
     /* Parent: wait for child to exit */
-    while (waitpid (imp_child, &status, 0) != imp_child) {
+    while (waitpid (child, &status, 0) != child) {
         if (errno != EINTR)
             imp_die (1, "waitpid: %s", strerror (errno));
     }
@@ -360,7 +303,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     if (WIFEXITED (status))
         exit (WEXITSTATUS (status));
     else if (WIFSIGNALED (status))
-        exit (WTERMSIG (status) + 128);
+        imp_raise (WTERMSIG (status));
     else
         exit (1);
 

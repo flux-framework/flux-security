@@ -13,12 +13,14 @@
 
 #include "src/libutil/cf.h"
 #include "privsep.h"
+#include "cgroup.h"
 
 struct imp_state {
     int        argc;
     char     **argv;        /* cmdline arguments from main() */
     cf_t      *conf;        /* IMP configuration */
     privsep_t *ps;          /* Privilege separation handle */
+    struct cgroup_info *cgroup;
 };
 
 #endif /* !HAVE_IMP_STATE_H */

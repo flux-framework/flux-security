@@ -59,6 +59,11 @@ int main (int argc, char *argv[])
     if (!(imp.conf = imp_conf_load (imp_get_config_pattern ())))
         imp_die (1, "Failed to load configuration");
 
+    /*  Get current IMP cgroup information:
+     */
+    if (!(imp.cgroup = cgroup_info_create ()))
+        imp_die (1, "Failed to get current cgroup info");
+
     /*  Audit subsystem initialization
      */
     // Skip.
