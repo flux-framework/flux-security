@@ -293,6 +293,9 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
             imp_die (1, "waitpid: %s", strerror (errno));
     }
 
+    if (cgroup_wait_for_empty (exec->imp->cgroup) < 0)
+        imp_warn ("error waiting for processes in job cgroup");
+
 #if HAVE_PAM
     /* Call privliged IMP plugins/containment finalization */
     if (imp_supports_pam (exec))
