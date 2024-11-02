@@ -165,7 +165,7 @@ imp_run (struct imp_state *imp,
         imp_die (1, "run %s: relative path not allowed", name);
 
     /*  Get passwd entry for current user to set HOME and USER */
-    if (!(pwd = getpwuid (getuid ())))
+    if (!(pwd = getpwuid (geteuid ())))
         imp_die (1, "run: failed to find target user");
 
     /*  Set HOME and USER */
@@ -198,6 +198,10 @@ imp_run (struct imp_state *imp,
     if (child == 0) {
         /* unblock all signals */
         imp_sigunblock_all ();
+
+        if (setuid (geteuid()) < 0
+            || setgid (getegid()) < 0)
+            imp_die (1, "setuid: %s", strerror (errno));
 
         args[0] = path;
         args[1] = NULL;
@@ -270,10 +274,6 @@ int imp_run_privileged (struct imp_state *imp,
     kv_env = get_run_env (kv, cf_get_in (cf_run, "allowed-environment"));
     if (!kv_env)
         imp_die (1, "run: error processing command environment");
-
-    if (setuid (geteuid()) < 0
-        || setgid (getegid()) < 0)
-        imp_die (1, "setuid: %s", strerror (errno));
 
     imp_run (imp, name, cf_run, kv_env);
 
