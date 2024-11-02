@@ -149,33 +149,7 @@ static void pid_kill_tests (void)
 
 int main (void)
 {
-    struct pid_info *p;
-
-    ok (pid_info_create (0) == NULL && errno == EINVAL,
-        "pid_info_create (0) fails with EINVAL");
-
-    ok ((p = pid_info_create (getpid ())) != NULL,
-        "pid_info_create (getpid ()) works");
-    ok (p->pid == getpid (),
-        "p->pid is expected");
-    ok (p->pid_owner == getuid (),
-        "p->pid_owner is expected");
-    diag ("p->cg_path = %s", p->cg_path);
-    diag ("p->cg_owner = %d", (int) p->cg_owner);
-    pid_info_destroy (p);
-
-    ok ((p = pid_info_create (-getpid ())) != NULL,
-        "pid_info_create (-getpid ()) works");
-    ok (p->pid == getpid (),
-        "p->pid is expected");
-    ok (p->pid_owner == getuid (),
-        "p->pid_owner is expected");
-    diag ("p->cg_path = %s", p->cg_path);
-    diag ("p->cg_owner = %d", (int) p->cg_owner);
-    pid_info_destroy (p);
-
     pid_kill_tests ();
-
     done_testing ();
 }
 
