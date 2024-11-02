@@ -18,8 +18,6 @@ extern int imp_casign_unprivileged (struct imp_state *imp, struct kv *);
 extern int imp_casign_privileged (struct imp_state *imp, struct kv *);
 extern int imp_exec_unprivileged (struct imp_state *imp, struct kv *);
 extern int imp_exec_privileged (struct imp_state *imp, struct kv *);
-extern int imp_kill_unprivileged (struct imp_state *imp, struct kv *);
-extern int imp_kill_privileged (struct imp_state *imp, struct kv *);
 extern int imp_run_unprivileged (struct imp_state *imp, struct kv *);
 extern int imp_run_privileged (struct imp_state *imp, struct kv *);
 
@@ -41,9 +39,6 @@ struct impcmd impcmd_list[] = {
     { "exec",
       imp_exec_unprivileged,
       imp_exec_privileged },
-    { "kill",
-      imp_kill_unprivileged,
-      imp_kill_privileged },
     { "run",
       imp_run_unprivileged,
       imp_run_privileged },
