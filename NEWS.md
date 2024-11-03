@@ -1,3 +1,13 @@
+flux-security version 0.12.0 - 2024-11-04
+-----------------------------------------
+
+## New Features
+ * imp: exec: send SIGKILL to cgroup/children on SIGUSR1 (#186)
+ * imp: exec: wait for job cgroup to be empty before exiting (#187)
+ * allow privileged IMP to linger during flux-imp run to support signal
+   forwarding (#188)
+ * remove `flux-imp kill` command (#189)
+
 flux-security version 0.11.0 - 2023-12-17
 -----------------------------------------
 
