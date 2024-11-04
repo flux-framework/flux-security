@@ -37,10 +37,6 @@ COMMANDS
   **exec** command configuration can be found in
   :man5:`flux-config-security-imp`.
 
-**kill**
-  The **flux-imp kill** command is invoked by a multi-user instance to
-  send signals to jobs running as users other than the instance owner.
-
 **run**
   The **flux-imp run** command is used by a Flux instance to execute
   arbitrary commands with privilege, typically a job prolog or epilog.
