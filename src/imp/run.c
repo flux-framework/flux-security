@@ -51,6 +51,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <pwd.h>
 #include <signal.h>
 
@@ -61,6 +62,7 @@
 #include "imp_state.h"
 #include "impcmd.h"
 #include "privsep.h"
+#include "signals.h"
 
 extern char **environ;
 
@@ -142,7 +144,8 @@ static struct kv *get_run_env (struct kv *kv, const cf_t *allowed_env)
 }
 
 static void __attribute__((noreturn))
-imp_run (const char *name,
+imp_run (struct imp_state *imp,
+         const char *name,
          const cf_t *run_cf,
          struct kv *kv_env)
 {
@@ -151,6 +154,8 @@ imp_run (const char *name,
     char **env;
     const char *args[2];
     int exit_code;
+    int status;
+    pid_t child;
 
     if (!(path = cf_string (cf_get_in (run_cf, "path")))
         || path[0] != '/')
@@ -160,7 +165,7 @@ imp_run (const char *name,
         imp_die (1, "run %s: relative path not allowed", name);
 
     /*  Get passwd entry for current user to set HOME and USER */
-    if (!(pwd = getpwuid (getuid ())))
+    if (!(pwd = getpwuid (geteuid ())))
         imp_die (1, "run: failed to find target user");
 
     /*  Set HOME and USER */
@@ -181,20 +186,55 @@ imp_run (const char *name,
     if (chdir ("/") < 0)
         imp_die (1, "run: failed to chdir to /");
 
-    args[0] = path;
-    args[1] = NULL;
+    /* Block signals so parent isn't terminated
+     */
+    imp_sigblock_all ();
+
+    if ((child = fork ()) < 0)
+        imp_die (1, "run: fork: %s", strerror (errno));
+
+    imp_set_signal_child (child);
+
+    if (child == 0) {
+        /* unblock all signals */
+        imp_sigunblock_all ();
+
+        if (setuid (geteuid()) < 0
+            || setgid (getegid()) < 0)
+            imp_die (1, "setuid: %s", strerror (errno));
+
+        args[0] = path;
+        args[1] = NULL;
 #if CODE_COVERAGE_ENABLED
-    __gcov_dump ();
-    __gcov_reset ();
+        __gcov_dump ();
+        __gcov_reset ();
 #endif
-    execve (path, (char **) args, env);
+        execve (path, (char **) args, env);
 
-    if (errno == EPERM || errno == EACCES)
-        exit_code = 126;
+        if (errno == EPERM || errno == EACCES)
+            exit_code = 126;
+        else
+            exit_code = 127;
+        imp_die (exit_code, "%s: %s", path, strerror (errno));
+    }
+
+    /* Parent:
+     */
+    imp_setup_signal_forwarding (imp);
+
+    /* Parent: wait for child to exit */
+    while (waitpid (child, &status, 0) != child) {
+        if (errno != EINTR)
+            imp_die (1, "waitpid: %s", strerror (errno));
+    }
+
+    /* Exit with status of the child process */
+    if (WIFEXITED (status))
+        exit (WEXITSTATUS (status));
+    else if (WIFSIGNALED (status))
+        imp_raise (WTERMSIG (status));
     else
-        exit_code = 127;
-
-    imp_die (exit_code, "%s: %s", path, strerror (errno));
+        exit (1);
 }
 
 
@@ -235,11 +275,7 @@ int imp_run_privileged (struct imp_state *imp,
     if (!kv_env)
         imp_die (1, "run: error processing command environment");
 
-    if (setuid (geteuid()) < 0
-        || setgid (getegid()) < 0)
-        imp_die (1, "setuid: %s", strerror (errno));
-
-    imp_run (name, cf_run, kv_env);
+    imp_run (imp, name, cf_run, kv_env);
 
     return 0;
 }
@@ -338,7 +374,7 @@ int imp_run_unprivileged (struct imp_state *imp, struct kv *kv)
         imp_die (1, "run: permission denied");
 
     kv_env = get_run_env (kv, cf_get_in (cf_run, "allowed-environment"));
-    imp_run (imp->argv[2], cf_run, kv_env);
+    imp_run (imp, imp->argv[2], cf_run, kv_env);
 
     return 0;
 }

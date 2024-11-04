@@ -10,6 +10,8 @@ Basic flux-imp run functionality and corner case handing tests
 test -n "$FLUX_TESTS_LOGFILE" && set -- "$@" --logfile
 . `dirname $0`/sharness.sh
 
+test "$chain_lint" = "t" || test_set_prereq NO_CHAIN_LINT
+
 flux_imp=${SHARNESS_BUILD_DIRECTORY}/src/imp/flux-imp
 sign=${SHARNESS_BUILD_DIRECTORY}/t/src/sign
 
@@ -49,6 +51,10 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	path = "$TESTDIR/test.sh"
 	[run.allowednotset]
 	path = "$TESTDIR/test.sh"
+	[run.sleep]
+	allowed-users = [ "$(whoami)" ]
+	allowed-environment = [ "TEST_*", "EXACT_MATCH" ]
+	path = "$TESTDIR/sleep.sh"
 	EOF
 '
 test_expect_success 'create test shell scripts' '
@@ -61,12 +67,20 @@ test_expect_success 'create test shell scripts' '
 	env
 	EOF
 	chmod +x $TESTDIR/test.sh &&
+	cat <<-EOF >$TESTDIR/sleep.sh &&
+	#!/bin/sh
+	echo \$PPID >$TESTDIR/sleep.pid
+	sleep 30
+	EOF
+	cat $TESTDIR/sleep.sh &&
+	chmod +x $TESTDIR/sleep.sh &&
 	touch $TESTDIR/noexec.sh &&
 	chmod 600 $TESTDIR/noexec.sh
 '
 test_expect_success SUDO 'set appropriate permissions for sudo based tests' '
 	$SUDO chown root.root $TESTDIR $TESTDIR/* &&
 	$SUDO chmod 755 $TESTDIR $TESTDIR/test.sh &&
+	$SUDO chmod 755 $TESTDIR $TESTDIR/sleep.sh &&
 	$SUDO chmod 644 $TESTDIR/test.toml
 '
 
@@ -157,6 +171,26 @@ test_expect_success SUDO 'flux-imp run allows FLUX_JOB_ID and FLUX_JOB_USERID' '
 	    $flux_imp run test >sudo-run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_ID=1234 sudo-run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_USERID=$(id -u) sudo-run-test-uid-jobid.out
+'
+
+wait_for_file() {
+        count=0 &&
+        while ! test -f $1; do
+            sleep 0.1
+            count=$((count+1))
+            test $count -gt 20 && break
+        done
+	test -f $1
+}
+test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp run: setuid IMP lingers' '
+	$SUDO $flux_imp run sleep &
+	imp_pid=$! &&
+	wait_for_file $TESTDIR/sleep.pid &&
+	test_when_finished "$SUDO rm -f $pidfile" &&
+	pid=$(cat $TESTDIR/sleep.pid) &&
+	test $(ps --no-header -o comm -p ${pid}) = "flux-imp" &&
+	kill -TERM $pid &&
+	test_expect_code 143 wait $imp_pid
 '
 test_expect_success SUDO 'flux-imp run will not run file with bad ownership' '
 	$SUDO chown $USER $TESTDIR/test.sh &&
