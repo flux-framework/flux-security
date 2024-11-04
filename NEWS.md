@@ -8,6 +8,9 @@ flux-security version 0.12.0 - 2024-11-04
    forwarding (#188)
  * remove `flux-imp kill` command (#189)
 
+## Cleanup
+ * build: ensure autogen.sh updates package version
+
 flux-security version 0.11.0 - 2023-12-17
 -----------------------------------------
 
