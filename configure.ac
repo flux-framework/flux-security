@@ -77,12 +77,12 @@ AS_IF([test "x$enable_docs" != "xno"], [
 	PYTHON_VERSION=3
 	AM_PATH_PYTHON([3])
 	AM_CHECK_PYMOD(sphinx,
-	               [StrictVersion(sphinx.__version__) >= StrictVersion ('1.6.7')],
+	               [Version(sphinx.__version__) >= Version ('1.6.7')],
 	               [sphinx=true],
 	               [sphinx=false; AC_MSG_WARN([could not find sphinx to generate docs, version 1.6.7+ required])]
                        )
 	AM_CHECK_PYMOD(docutils,
-                       [StrictVersion(docutils.__version__) >= StrictVersion ('0.11.0')],
+                       [Version(docutils.__version__) >= Version ('0.11.0')],
                        [docutils=true],
                        [docutils=false; AC_MSG_WARN([could not find docutils to generate docs, version 0.11.0+ required])]
                        )

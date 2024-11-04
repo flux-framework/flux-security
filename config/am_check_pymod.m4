@@ -15,10 +15,7 @@ except:
         sys.exit(0)
 sys.exit(0)"], [prog="
 import sys
-try:
-    from distutils.version import StrictVersion as Version
-except ModuleNotFoundError:
-    from packaging.version import Version
+from packaging.version import Version
 import $1
 if not $2:
     sys.exit(1)
