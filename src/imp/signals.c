@@ -37,12 +37,34 @@ void imp_sigblock_all (void)
         imp_die (1, "failed to block signals: %s", strerror (errno));
 }
 
+static void reset_ignored_signals (void)
+{
+    struct sigaction sa;
+    int i;
+
+    memset (&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_DFL;
+    sa.sa_flags = 0;
+    sigemptyset (&sa.sa_mask);
+
+    for (i = 1; i < SIGRTMIN; i++) {
+        /* Note: it is expected that some signals will fail sigaction(2)
+         * here (e.g. SIGKILL). Just ignore these errors.
+         */
+        (void) sigaction (i, &sa, NULL);
+    }
+}
+
 void imp_sigunblock_all (void)
 {
     sigset_t mask;
     sigemptyset (&mask);
     if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
         imp_die (1, "failed to unblock signals: %s", strerror (errno));
+
+    /* Also need to reset any signals that may be currently ignored
+     */
+    reset_ignored_signals ();
 }
 
 static void fwd_signal (int signum)
@@ -67,7 +89,7 @@ static void fwd_signal (int signum)
         if (count < 0)
             imp_warn ("Failed to forward SIGKILL: %s", strerror (errno));
     }
-    else if (imp_child > 0)
+    else if (imp_child != -1)
         kill (imp_child, signum);
 }
 

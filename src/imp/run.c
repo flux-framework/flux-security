@@ -193,11 +193,17 @@ imp_run (struct imp_state *imp,
     if ((child = fork ()) < 0)
         imp_die (1, "run: fork: %s", strerror (errno));
 
-    imp_set_signal_child (child);
+    imp_set_signal_child (-child);
 
     if (child == 0) {
         /* unblock all signals */
         imp_sigunblock_all ();
+
+        /* Place child in its own process group, so that parent IMP
+         * can signal the pgrp as a whole
+         */
+        if (setpgrp () < 0)
+            imp_die (1, "setpgrp: %s", strerror (errno));
 
         if (setuid (geteuid()) < 0
             || setgid (getegid()) < 0)
