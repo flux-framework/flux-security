@@ -186,7 +186,7 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp run: setuid IMP lingers' '
 	$SUDO $flux_imp run sleep &
 	imp_pid=$! &&
 	wait_for_file $TESTDIR/sleep.pid &&
-	test_when_finished "$SUDO rm -f $pidfile" &&
+	test_when_finished "$SUDO rm -f $TESTDIR/sleep.pid" &&
 	pid=$(cat $TESTDIR/sleep.pid) &&
 	test $(ps --no-header -o comm -p ${pid}) = "flux-imp" &&
 	kill -TERM $pid &&
