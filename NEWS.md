@@ -1,3 +1,10 @@
+flux-security version 0.13.0 - 2024-11-06
+-----------------------------------------
+
+## Fixes
+ * configure: do not use distutils StrictVersion (#193)
+ * forward signals to entire process group in `flux-imp run` (#195)
+
 flux-security version 0.12.0 - 2024-11-04
 -----------------------------------------
 
