@@ -193,7 +193,7 @@ imp_run (struct imp_state *imp,
     if ((child = fork ()) < 0)
         imp_die (1, "run: fork: %s", strerror (errno));
 
-    imp_set_signal_child (child);
+    imp_set_signal_child (-child);
 
     if (child == 0) {
         /* unblock all signals */
