@@ -199,6 +199,12 @@ imp_run (struct imp_state *imp,
         /* unblock all signals */
         imp_sigunblock_all ();
 
+        /* Place child in its own process group, so that parent IMP
+         * can signal the pgrp as a whole
+         */
+        if (setpgrp () < 0)
+            imp_die (1, "setpgrp: %s", strerror (errno));
+
         if (setuid (geteuid()) < 0
             || setgid (getegid()) < 0)
             imp_die (1, "setuid: %s", strerror (errno));
