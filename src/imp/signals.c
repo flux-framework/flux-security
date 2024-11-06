@@ -67,7 +67,7 @@ static void fwd_signal (int signum)
         if (count < 0)
             imp_warn ("Failed to forward SIGKILL: %s", strerror (errno));
     }
-    else if (imp_child > 0)
+    else if (imp_child != -1)
         kill (imp_child, signum);
 }
 

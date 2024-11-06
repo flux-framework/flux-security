@@ -14,9 +14,10 @@
 #include <sys/types.h>
 #include "imp_state.h"
 
-/*  Set the target of IMP signal forwarding
+/*  Set the target of IMP signal forwarding. `pid` may be less than -1,
+ *  in which case the entire process group `-pid` will be signaled.
  */
-void imp_set_signal_child (pid_t child);
+void imp_set_signal_child (pid_t pid);
 
 /*  Setup RFC 15 standard IMP signal forwarding
  */
