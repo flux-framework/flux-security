@@ -197,7 +197,8 @@ struct cgroup_info *cgroup_info_create (void)
     /* Note: GNU basename(3) never modifies its argument. (_GNU_SOURCE
      * is defined in config.h.)
      */
-    if (strncmp (basename (cgroup->path), "imp-shell", 9) == 0)
+    if (strncmp (basename (cgroup->path), "imp-shell", 9) == 0
+        || strncmp (basename (cgroup->path), "flux-", 5) == 0)
         cgroup->use_cgroup_kill = true;
 
     return cgroup;
