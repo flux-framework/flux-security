@@ -172,6 +172,10 @@ int pid_kill_children (pid_t pid, int sig)
         return -1;
     }
     while (fscanf (fp, " %lu", &child) == 1) {
+        if (child <= 1 || (pid_t)child == pid) {
+            imp_warn ("Ignoring suspect pid %lu from %s", child, path);
+            continue;
+        }
         if (kill ((pid_t) child, sig) < 0) {
             saved_errno = errno;
             rc = -1;
