@@ -36,7 +36,9 @@ libutil_la_SOURCES = \
 	path.c \
 	path.h \
 	argsplit.c \
-	argsplit.h
+	argsplit.h \
+	sd_notify.c \
+	sd_notify.h
 
 TESTS = \
 	test_hash.t \
