@@ -234,6 +234,9 @@ imp_run (struct imp_state *imp,
             imp_die (1, "waitpid: %s", strerror (errno));
     }
 
+    if (cgroup_wait_for_empty (imp->cgroup) < 0)
+        imp_warn ("error waiting for processes in cgroup");
+
     /* Exit with status of the child process */
     if (WIFEXITED (status))
         exit (WEXITSTATUS (status));
