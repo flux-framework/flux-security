@@ -36,6 +36,7 @@
 #include <jansson.h>
 
 #include "src/libutil/kv.h"
+#include "src/libutil/sd_notify.h"
 #include "src/lib/context.h"
 #include "src/lib/sign.h"
 
@@ -282,6 +283,11 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
         imp_exec (exec);
     }
 
+    int rc = sd_notify (0, "READY=1");
+    if (rc < 0)
+        imp_warn ("sd_notify READY=1 failed: %s", strerror (-rc));
+    sd_notify (0, "STATUS=IMP is monitoring child and forwarding signals");
+
     /* Ensure common signals received by this IMP are forwarded to
      *  the child process
      */
@@ -293,8 +299,30 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
             imp_die (1, "waitpid: %s", strerror (errno));
     }
 
+    rc = sd_notify (0, "STOPPING=1");
+    if (rc < 0)
+        imp_warn ("sd_notify STOPPING=1 failed: %s", strerror (-rc));
+    if (WIFEXITED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child exited (%d), waiting for cgroup",
+                    WEXITSTATUS (status));
+    }
+    else if (WIFSIGNALED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child %s, waiting for cgroup",
+                    strsignal (WTERMSIG (status)));
+    }
+    else {
+        sd_notifyf (0,
+                    "STATUS=IMP child wait returned status=%d,"
+                    " waiting for cgroup",
+                    status);
+    }
+
     if (cgroup_wait_for_empty (exec->imp->cgroup) < 0)
         imp_warn ("error waiting for processes in job cgroup");
+
+    sd_notify (0, "STATUS=cgroup is now empty, exiting");
 
 #if HAVE_PAM
     /* Call privliged IMP plugins/containment finalization */
