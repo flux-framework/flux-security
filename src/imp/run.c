@@ -57,6 +57,7 @@
 
 #include "src/libutil/kv.h"
 #include "src/libutil/path.h"
+#include "src/libutil/sd_notify.h"
 
 #include "imp_log.h"
 #include "imp_state.h"
@@ -226,6 +227,11 @@ imp_run (struct imp_state *imp,
 
     /* Parent:
      */
+    int rc = sd_notify (0, "READY=1");
+    if (rc < 0)
+        imp_warn ("sd_notify READY=1 failed: %s", strerror (-rc));
+    sd_notify (0, "STATUS=IMP is monitoring child and forwarding signals");
+
     imp_setup_signal_forwarding (imp);
 
     /* Parent: wait for child to exit */
@@ -233,6 +239,31 @@ imp_run (struct imp_state *imp,
         if (errno != EINTR)
             imp_die (1, "waitpid: %s", strerror (errno));
     }
+
+    rc = sd_notify (0, "STOPPING=1");
+    if (rc < 0)
+        imp_warn ("sd_notify STOPPING=1 failed: %s", strerror (-rc));
+    if (WIFEXITED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child exited (%d), waiting for cgroup",
+                    WEXITSTATUS (status));
+    }
+    else if (WIFSIGNALED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child %s, waiting for cgroup",
+                    strsignal (WTERMSIG (status)));
+    }
+    else {
+        sd_notifyf (0,
+                    "STATUS=IMP child wait returned status=%d,"
+                    " waiting for cgroup",
+                    status);
+    }
+
+    if (cgroup_wait_for_empty (imp->cgroup) < 0)
+        imp_warn ("error waiting for processes in cgroup");
+
+    sd_notify (0, "STATUS=cgroup is now empty, exiting");
 
     /* Exit with status of the child process */
     if (WIFEXITED (status))
@@ -254,6 +285,13 @@ int imp_run_privileged (struct imp_state *imp,
     struct kv *kv_env;
     const char *name;
     const cf_t *cf_run;
+    const char *notify_socket;
+
+    /*  Retain NOTIFY_SOCKET so the privileged imp run process can call
+     *   sd_notify(3).  As a reminder, the environment created by the
+     *   unprivileged imp run process is only passed through to the child.
+     */
+    notify_socket = getenv ("NOTIFY_SOCKET");
 
     /*  Nullify environment. The environment for the target command
      *   will be set explicitly in get_run_env() from variables passed
@@ -280,6 +318,11 @@ int imp_run_privileged (struct imp_state *imp,
     kv_env = get_run_env (kv, cf_get_in (cf_run, "allowed-environment"));
     if (!kv_env)
         imp_die (1, "run: error processing command environment");
+
+    if (notify_socket) {
+        if (setenv ("NOTIFY_SOCKET", notify_socket, 0) < 0)
+            imp_warn ("setenv NOTIFY_SOCKET failed");
+    }
 
     imp_run (imp, name, cf_run, kv_env);
 
