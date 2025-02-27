@@ -1,3 +1,11 @@
+flux-security version 0.14.0 - 2025-02-27
+-----------------------------------------
+
+## New features
+ * imp run: wait for cgroup and call sd_notify() (#203)
+ * imp exec: call sd_notify() (#201)
+ * imp: use cgroup_kill when cgroup begins with flux- (#200)
+
 flux-security version 0.13.0 - 2024-11-06
 -----------------------------------------
 
