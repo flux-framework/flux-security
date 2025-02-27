@@ -57,6 +57,7 @@
 
 #include "src/libutil/kv.h"
 #include "src/libutil/path.h"
+#include "src/libutil/sd_notify.h"
 
 #include "imp_log.h"
 #include "imp_state.h"
@@ -226,6 +227,11 @@ imp_run (struct imp_state *imp,
 
     /* Parent:
      */
+    int rc = sd_notify (0, "READY=1");
+    if (rc < 0)
+        imp_warn ("sd_notify READY=1 failed: %s", strerror (-rc));
+    sd_notify (0, "STATUS=IMP is monitoring child and forwarding signals");
+
     imp_setup_signal_forwarding (imp);
 
     /* Parent: wait for child to exit */
@@ -234,8 +240,30 @@ imp_run (struct imp_state *imp,
             imp_die (1, "waitpid: %s", strerror (errno));
     }
 
+    rc = sd_notify (0, "STOPPING=1");
+    if (rc < 0)
+        imp_warn ("sd_notify STOPPING=1 failed: %s", strerror (-rc));
+    if (WIFEXITED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child exited (%d), waiting for cgroup",
+                    WEXITSTATUS (status));
+    }
+    else if (WIFSIGNALED (status)) {
+        sd_notifyf (0,
+                    "STATUS=IMP child %s, waiting for cgroup",
+                    strsignal (WTERMSIG (status)));
+    }
+    else {
+        sd_notifyf (0,
+                    "STATUS=IMP child wait returned status=%d,"
+                    " waiting for cgroup",
+                    status);
+    }
+
     if (cgroup_wait_for_empty (imp->cgroup) < 0)
         imp_warn ("error waiting for processes in cgroup");
+
+    sd_notify (0, "STATUS=cgroup is now empty, exiting");
 
     /* Exit with status of the child process */
     if (WIFEXITED (status))
