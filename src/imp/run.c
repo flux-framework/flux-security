@@ -257,6 +257,13 @@ int imp_run_privileged (struct imp_state *imp,
     struct kv *kv_env;
     const char *name;
     const cf_t *cf_run;
+    const char *notify_socket;
+
+    /*  Retain NOTIFY_SOCKET so the privileged imp run process can call
+     *   sd_notify(3).  As a reminder, the environment created by the
+     *   unprivileged imp run process is only passed through to the child.
+     */
+    notify_socket = getenv ("NOTIFY_SOCKET");
 
     /*  Nullify environment. The environment for the target command
      *   will be set explicitly in get_run_env() from variables passed
@@ -283,6 +290,11 @@ int imp_run_privileged (struct imp_state *imp,
     kv_env = get_run_env (kv, cf_get_in (cf_run, "allowed-environment"));
     if (!kv_env)
         imp_die (1, "run: error processing command environment");
+
+    if (notify_socket) {
+        if (setenv ("NOTIFY_SOCKET", notify_socket, 0) < 0)
+            imp_warn ("setenv NOTIFY_SOCKET failed");
+    }
 
     imp_run (imp, name, cf_run, kv_env);
 
