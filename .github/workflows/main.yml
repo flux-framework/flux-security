@@ -13,7 +13,7 @@ jobs:
     - uses: flux-framework/pr-validator@master
 
   spelling:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - uses: crate-ci/typos@7ad296c72fa8265059cc03d1eda562fbdfcd6df2 # v1.9.0
@@ -38,7 +38,7 @@ jobs:
 
   ci:
     needs: [ generate-matrix ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       FLUX_TESTS_LOGFILE: t
     strategy:
