@@ -217,6 +217,7 @@ else
         --tty \
         ${INTERACTIVE:+--interactive} \
         --network=host \
+	--cgroupns=host \
         ${BUILD_IMAGE} \
         ${INTERACTIVE:-./src/test/checks_run.sh ${CONFIGURE_ARGS}} \
     || die "docker run failed"
