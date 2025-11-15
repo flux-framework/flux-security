@@ -72,6 +72,10 @@ jobs:
       env: ${{matrix.env}}
       run: ${{matrix.command}}
 
+    - name: tmate debug
+      if: ${{ !cancelled() && runner.debug }}
+      uses: mxschmitt/action-tmate@v3
+
     - name: annotate errors
       if: failure() || cancelled()
       env: ${{matrix.env}}
