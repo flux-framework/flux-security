@@ -289,7 +289,10 @@ test_expect_success SUDO,NO_CHAIN_LINT,SYSTEMD_RUN \
 	test_expect_code 137 wait $pid
 '
 
-CGROUP_PATH="$(awk '/^cgroup2/ {print $2}' /proc/self/mounts)/imp-shell.$$"
+CGROUP_MOUNT=$(awk '/^cgroup2/ {print $2}' /proc/self/mounts)
+CURRENT_CGROUP_PATH=$(cat /proc/self/cgroup | sed -n s/^0:://p)
+CGROUP_PATH="${CGROUP_MOUNT}${CURRENT_CGROUP_PATH}/imp-shell.$$"
+echo "using CGROUP_PATH=$CGROUP_PATH"
 test_have_prereq SUDO &&
  $SUDO mkdir $CGROUP_PATH &&
  test_set_prereq CGROUPFS &&
@@ -299,13 +302,18 @@ cat <<'EOF' >run-in-cgroup.sh
 #!/bin/sh
 path=$1
 shift
-test -d $path || mkdir -p $path
-echo "moving pid $$ to $path" >&2
-echo $$ >${path}/cgroup.procs
-echo "running $@ as $(id -u)" >&2
+test -d $path || mkdir -p $path &&
+echo "moving pid $$ to $path" >&2 &&
+echo $$ >${path}/cgroup.procs &&
+echo "running $@ as $(id -u)" >&2 &&
 exec "$@"
 EOF
 chmod +x run-in-cgroup.sh
+
+test_have_prereq SUDO &&
+ $SUDO ./run-in-cgroup.sh $CGROUP_PATH cat /proc/self/cgroup &&
+ test_set_prereq CGROUP_WRITEABLE
+
 
 #  Rewrite sleeper script so it results in a hierarchy of processes
 cat <<EOF>sleeper.sh
@@ -315,7 +323,7 @@ printf "\$PPID\n" >$(pwd)/sleeper.pid
 EOF
 chmod +x sleeper.sh
 
-test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITEABLE \
 	'flux-imp exec: SIGUSR1 sends SIGKILL via cgroup kill' '
 	fake_input_sign_none | \
 		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
@@ -329,7 +337,7 @@ test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
 	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
 '
 
-test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT \
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITEABLE \
 	'flux-imp exec: SIGUSR1 waits for cgroup to be empty' '
 	fake_input_sign_none | \
 		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
