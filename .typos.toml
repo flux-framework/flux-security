@@ -3,6 +3,17 @@ extend-exclude = [
   "config/*",
   "src/libtomlc99/*",
   "src/libtap/*",
+  "src/common/libutil/strlcpy*",
   "t/sharness.sh",
   "t/t0000-sharness.t"
 ]
+[default]
+extend-ignore-re = [
+  # Ignore regex character class patterns like [eE]rror
+  '\[[eE]+\]rror',
+  # Allow Tru64
+  'Tru64',
+]
+[default.extend-identifiers]
+gl_pathc = "gl_pathc"
+siz = "siz"
