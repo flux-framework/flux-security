@@ -124,6 +124,7 @@ static int cgroup_init_path (struct cgroup_info *cgroup)
 static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
 {
     struct statfs fs;
+    struct statfs fsU;
 
     /*  Assume unified unless we discover otherwise
      */
@@ -149,22 +150,27 @@ static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
     (void) strlcpy (cg->mount_dir,
                     "/sys/fs/cgroup/unified",
                     sizeof (cg->mount_dir));
-    if (statfs (cg->mount_dir, &fs) < 0)
+    if (statfs (cg->mount_dir, &fsU) < 0) {
+        if (errno == ENOENT)
+            goto legacy;
         return -1;
+    }
 
-    if (fs.f_type == CGROUP2_SUPER_MAGIC)
+    if (fsU.f_type == CGROUP2_SUPER_MAGIC)
         return 0;
 
+legacy:
     /*  O/w, if /sys/fs/cgroup is mounted as tmpfs, we need to check
      *   for /sys/fs/cgroup/systemd mounted as cgroupfs (legacy).
      */
     if (fs.f_type == TMPFS_MAGIC) {
+        struct statfs fsSD;
 
         (void) strlcpy (cg->mount_dir,
                         "/sys/fs/cgroup/systemd",
                         sizeof (cg->mount_dir));
-        if (statfs (cg->mount_dir, &fs) == 0
-            && fs.f_type == CGROUP_SUPER_MAGIC) {
+        if (statfs (cg->mount_dir, &fsSD) == 0
+            && fsSD.f_type == CGROUP_SUPER_MAGIC) {
             cg->unified = false;
             return 0;
         }
