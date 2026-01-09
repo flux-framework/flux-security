@@ -150,10 +150,8 @@ static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
         (void) strlcpy (cg->mount_dir,
                         "/sys/fs/cgroup/unified",
                         sizeof (cg->mount_dir));
-        if (statfs (cg->mount_dir, &fs) < 0)
-            return -1;
-
-        if (fs.f_type == CGROUP2_SUPER_MAGIC)
+        if (statfs (cg->mount_dir, &fs) == 0
+            && fs.f_type == CGROUP2_SUPER_MAGIC)
             return 0;
 
         /*  O/w, check for /sys/fs/cgroup/systemd mounted as cgroupfs
