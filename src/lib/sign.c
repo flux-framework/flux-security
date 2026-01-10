@@ -315,9 +315,9 @@ const char *flux_sign_wrap (flux_security_t *ctx,
  * Return header on success or NULL on error with errno set.
  * Set 'endptr' to period ('.') delimiter following HEADER.
  */
-static struct kv *header_decode (const char *input, char **endptr)
+static struct kv *header_decode (const char *input, const char **endptr)
 {
-    char *p;
+    const char *p;
     const char *src;
     size_t srclen;
     void *dst;
@@ -358,9 +358,9 @@ error:
  * Return 0 on success, -1 on failure with errno set.
  */
 static int payload_decode_cpy (const char *input, void **buf, int *bufsz,
-                               char **endptr)
+                               const char **endptr)
 {
-    char *p;
+    const char *p;
     size_t dstlen;
     size_t srclen;
     const char *src;
@@ -412,7 +412,7 @@ static int sign_unwrap (flux_security_t *ctx,
     const char *mechanism;
     const struct sign_mech *mech;
     const cf_t *allowed_types;
-    char *endptr;
+    const char *endptr;
 
     if (!ctx || !input || !(flags == 0 || flags == FLUX_SIGN_NOVERIFY)) {
         errno = EINVAL;
