@@ -143,23 +143,20 @@ static int cgroup_init_mount_dir_and_type (struct cgroup_info *cg)
     if (fs.f_type == CGROUP2_SUPER_MAGIC)
         return 0;
 
-    /*  O/w, check if cgroup2 unified hierarchy mounted at
-     *   /sys/fs/cgroup/unified
-     */
-    (void) strlcpy (cg->mount_dir,
-                    "/sys/fs/cgroup/unified",
-                    sizeof (cg->mount_dir));
-    if (statfs (cg->mount_dir, &fs) < 0)
-        return -1;
-
-    if (fs.f_type == CGROUP2_SUPER_MAGIC)
-        return 0;
-
-    /*  O/w, if /sys/fs/cgroup is mounted as tmpfs, we need to check
-     *   for /sys/fs/cgroup/systemd mounted as cgroupfs (legacy).
-     */
     if (fs.f_type == TMPFS_MAGIC) {
+        /*  O/w, check if cgroup2 unified hierarchy mounted at
+         *   /sys/fs/cgroup/unified
+         */
+        (void) strlcpy (cg->mount_dir,
+                        "/sys/fs/cgroup/unified",
+                        sizeof (cg->mount_dir));
+        if (statfs (cg->mount_dir, &fs) == 0
+            && fs.f_type == CGROUP2_SUPER_MAGIC)
+            return 0;
 
+        /*  O/w, check for /sys/fs/cgroup/systemd mounted as cgroupfs
+         *   (legacy).
+         */
         (void) strlcpy (cg->mount_dir,
                         "/sys/fs/cgroup/systemd",
                         sizeof (cg->mount_dir));
