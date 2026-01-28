@@ -37,7 +37,7 @@ Security configuration files, including the ``conf.d`` directory and individual
 
 There is no mechanism to tell Flux components to reread the Flux security
 configurations when they change.  Most Flux security users such as
-:core:man1:`flux-mini` or :man8:`flux-imp` are short lived and read the latest
+:core:man1:`flux-submit` or :man8:`flux-imp` are short lived and read the latest
 configuration on each invocation.  There are two considerations to be aware
 of when updating the signing configuration, however:
 

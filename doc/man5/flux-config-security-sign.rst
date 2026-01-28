@@ -6,7 +6,7 @@ flux-config-security-sign(5)
 DESCRIPTION
 ===========
 
-Flux jobs are signed by job submission tools like :core:man1:`flux-mini`.
+Flux jobs are signed by job submission tools like :core:man1:`flux-submit`.
 The signature is verified upon receipt by the Flux ``job-ingest`` service,
 and at launch time by :man8:`flux-imp`.  A signing library provided by the
 ``flux-security`` project performs the cryptographic signing and verification.
