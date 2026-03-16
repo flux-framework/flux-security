@@ -33,6 +33,9 @@ libltdl/
 /config/ltversion.m4
 /config/lt~obsolete.m4
 
+# Automake parallel-tests pull-in
+/config/test-driver
+
 # Object files
 *.o
 *.ko
