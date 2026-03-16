@@ -281,7 +281,7 @@ static void simple_test (void)
     bool b;
     time_t t;
     const char *key;
-    int len;
+    int len = 0;
     time_t now;
 
     if (time (&now) < 0)
@@ -392,8 +392,8 @@ static void simple_test (void)
 static void empty_object (void)
 {
     struct kv *kv, *kv2;
-    const char *buf;
-    int len;
+    const char *buf = NULL;
+    int len = 0;
 
     kv = kv_create ();
     ok (kv != NULL,
