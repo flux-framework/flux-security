@@ -22,6 +22,7 @@
 #include "tomltk.h"
 #include "cf.h"
 #include "path.h"
+#include "strlcpy.h"
 
 #define ERRBUFSZ 200
 
@@ -72,7 +73,7 @@ errprintf (struct cf_error *error,
         (void)vsnprintf (error->errbuf, sizeof (error->errbuf), fmt, ap);
         va_end (ap);
         if (filename)
-            strncpy (error->filename, filename, PATH_MAX);
+            strlcpy (error->filename, filename, sizeof (error->filename));
         error->lineno = lineno;
     }
     errno = saved_errno;
