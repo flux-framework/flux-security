@@ -220,16 +220,17 @@ static int payload_encode_cat (const void *pay, int paysz,
 static int signature_cat (const char *sig, void **buf, int *bufsz)
 {
     int len = strlen (*buf);
+    int siglen = strlen (sig);
     char *dst;
 
     /* Grow buffer large enough to contain:
      * current header (len), '.' separator, signature, and final NUL.
      */
-    if (grow_buf (buf, bufsz, strlen(sig) + len + 2) < 0)
+    if (grow_buf (buf, bufsz, siglen + len + 2) < 0)
         return -1;
     dst = (char *)*buf + len;
     *dst++ = '.';
-    strcpy (dst, sig);
+    memcpy (dst, sig, siglen + 1);
     return 0;
 }
 
