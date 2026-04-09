@@ -22,6 +22,7 @@
 #include "src/libtomlc99/toml.h"
 #include "timestamp.h"
 #include "tomltk.h"
+#include "strlcpy.h"
 
 static int table_to_json (toml_table_t *tab, json_t **op);
 
@@ -38,7 +39,7 @@ static void errprintf (struct tomltk_error *error,
         (void)vsnprintf (error->errbuf, sizeof (error->errbuf), fmt, ap);
         va_end (ap);
         if (filename)
-            strncpy (error->filename, filename, PATH_MAX);
+            strlcpy (error->filename, filename, sizeof (error->filename));
         error->lineno = lineno;
     }
     errno = saved_errno;
