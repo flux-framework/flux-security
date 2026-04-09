@@ -51,10 +51,20 @@ struct safe_popen * safe_popen (const char *cmd)
     }
 
     if (!(sp = calloc (1, sizeof (*sp)))
-        || pipe (pfds) < 0
-        || !(sp->fp = fdopen (pfds[0], "r"))
-        || (sp->pid = fork ()) < 0) {
-        imp_warn ("Failed to setup child for popen: %s", strerror (errno));
+        || pipe (pfds) < 0) {
+        imp_warn ("popen: alloc/pipe: %s", strerror (errno));
+        goto error;
+    }
+    if (!(sp->fp = fdopen (pfds[0], "r"))) {
+        imp_warn ("popen: fdopen: %s", strerror (errno));
+        goto error;
+    }
+    /*  pfds[0] is now owned by sp->fp; clear it so the error path
+     *  does not double-close it via both fclose(sp->fp) and close(pfds[0]).
+     */
+    pfds[0] = -1;
+    if ((sp->pid = fork ()) < 0) {
+        imp_warn ("popen: fork: %s", strerror (errno));
         goto error;
     }
     /* fdopen consumed pfds[0], don't close it again in error path */
@@ -82,7 +92,6 @@ struct safe_popen * safe_popen (const char *cmd)
             (void) close (pfds[1]);
             _exit (126);
         }
-        (void) close (pfds[0]);
         (void) close (pfds[1]);
         setsid ();
         execvp (argv[0], argv);
