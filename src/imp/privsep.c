@@ -187,13 +187,12 @@ int privsep_wait (privsep_t *ps)
     int status = 0;
     if (privsep_is_parent (ps)) {
         if (ps->cpid > (pid_t) 0) {
-            kill (SIGTERM, ps->cpid);
             if (waitpid (ps->cpid, &status, 0) < 0)
                 status = -1;
             ps->cpid = (pid_t) -1;
         }
     }
-    return (status == 0 ? 0 : -1);
+    return ((WIFEXITED (status) && WEXITSTATUS (status) == 0) ? 0 : -1);
 }
 
 void privsep_destroy (privsep_t *ps)
