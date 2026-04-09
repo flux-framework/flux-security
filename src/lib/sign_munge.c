@@ -151,6 +151,13 @@ static int op_verify (flux_security_t *ctx, const struct kv *header,
 
     e = munge_decode (signature, sm->munge, (void **)&indigest,
                                                      &indigestsz, &uid, NULL);
+    /*  EMUNGE_CRED_REPLAYED is intentionally accepted: credentials may be
+     *  legitimately reused more than once per node (e.g. in testing when
+     *  running multiple brokers per node).  TTL checking below provides
+     *  the primary replay protection.
+     *  EMUNGE_CRED_EXPIRED is intentionally accepted: TTL is managed
+     *  independently by the flux-security max-ttl configuration.
+     */
     if (e != EMUNGE_SUCCESS && e != EMUNGE_CRED_REPLAYED
                             && e != EMUNGE_CRED_EXPIRED) {
         errno = EINVAL;
