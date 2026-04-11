@@ -162,10 +162,10 @@ void test_load_store (void)
     name = new_keypath ("test");
     ok (stat (name, &sb) == 0 && !(sb.st_mode & (S_IRGRP|S_IROTH))
                               && !(sb.st_mode & (S_IWGRP|S_IWOTH)),
-        "secret cert file is not read/writeable by group,other");
+        "secret cert file is not read/writable by group,other");
     name = new_keypath ("test.pub");
     ok (stat (name, &sb) == 0 && !(sb.st_mode & (S_IWGRP|S_IWOTH)),
-        "public cert file mode not writeable by group,other");
+        "public cert file mode not writable by group,other");
 
     /* Load just the public key and verify keys are different
      */

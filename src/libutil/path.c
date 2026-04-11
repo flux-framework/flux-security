@@ -74,14 +74,14 @@ static bool parent_dir_is_secure (const char *path,
         && (st.st_mode & S_IWGRP)
         && !(st.st_mode & S_ISVTX)) {
         errprintf (error,
-                   "parent directory is group-writeable without sticky bit");
+                   "parent directory is group-writable without sticky bit");
         errno = EINVAL;
         return false;
     }
     if ((st.st_mode & S_IWOTH)
         && !(st.st_mode & S_ISVTX)) {
         errprintf (error,
-                   "parent directory is world-writeable without sticky bit");
+                   "parent directory is world-writable without sticky bit");
         errno = EINVAL;
         return false;
     }

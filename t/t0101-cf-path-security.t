@@ -83,20 +83,20 @@ test_expect_success 'reset file and directory permissions' '
 	$sudo $cf tab.ok
 '
 test_expect_success 'cf refuses to read config w/ group writable directory' '
-	name=world-writeable-dir &&
+	name=world-writable-dir &&
 	sudo chgrp $(id -n -g) $CF_TESTDIR &&
 	sudo chmod 770 $CF_TESTDIR &&
 	test_must_fail $sudo $cf tab.ok 2>cf-${name}.err &&
 	test_debug "cat cf-${name}.err" &&
-	grep "${CF_TESTDIR}.*: parent directory is group-writeable" \
+	grep "${CF_TESTDIR}.*: parent directory is group-writable" \
 	     cf-${name}.err
 '
 test_expect_success 'cf refuses to read config w/ world writable directory' '
-	name=world-writeable-dir &&
+	name=world-writable-dir &&
 	sudo chmod 707 $CF_TESTDIR &&
 	test_must_fail $sudo $cf tab.ok 2>cf-${name}.err &&
 	test_debug "cat cf-${name}.err" &&
-	grep "${CF_TESTDIR}.*: parent directory is world-writeable" \
+	grep "${CF_TESTDIR}.*: parent directory is world-writable" \
 	     cf-${name}.err
 '
 test_expect_success 'cf allows group writable directory and sticky bit' '
@@ -105,7 +105,7 @@ test_expect_success 'cf allows group writable directory and sticky bit' '
 	$sudo $cf tab.ok
 '
 test_expect_success 'cf allows world writable directory and sticky bit' '
-	name=world-writeable-sticky &&
+	name=world-writable-sticky &&
 	sudo chmod 1707 $CF_TESTDIR &&
 	$sudo $cf tab.ok
 '

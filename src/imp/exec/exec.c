@@ -325,7 +325,7 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     sd_notify (0, "STATUS=cgroup is now empty, exiting");
 
 #if HAVE_PAM
-    /* Call privliged IMP plugins/containment finalization */
+    /* Call privileged IMP plugins/containment finalization */
     if (imp_supports_pam (exec))
         pam_finish ();
 #endif /* HAVE_PAM */

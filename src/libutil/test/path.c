@@ -95,7 +95,7 @@ void test_path_is_secure (void)
     if (chmod (path, 0646) < 0)
         BAIL_OUT ("chmod %s: %s", path, strerror (errno));
     ok (!path_is_secure (path, &error) && errno == EINVAL,
-        "path_is_secure fails on world writeable file: %s",
+        "path_is_secure fails on world writable file: %s",
         error.text);
 
     if (unlink (path) < 0)
