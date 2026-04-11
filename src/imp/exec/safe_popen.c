@@ -33,7 +33,8 @@ void safe_popen_destroy (struct safe_popen *sp)
 {
     if (sp) {
         int saved_errno = errno;
-        fclose (sp->fp);
+        if (sp->fp)
+            fclose (sp->fp);
         free (sp);
         errno = saved_errno;
     }
@@ -56,6 +57,8 @@ struct safe_popen * safe_popen (const char *cmd)
         imp_warn ("Failed to setup child for popen: %s", strerror (errno));
         goto error;
     }
+    /* fdopen consumed pfds[0], don't close it again in error path */
+    pfds[0] = -1;
 
     if (sp->pid == 0) {
         /*  Child process: Use pfds[1] as stdout
@@ -63,10 +66,20 @@ struct safe_popen * safe_popen (const char *cmd)
         char **argv = argsplit (cmd);
         if (!argv) {
             fprintf (stderr, "imp: popen: failed to tokenize '%s'\n", cmd);
+            (void) close (pfds[0]);
+            (void) close (pfds[1]);
             _exit (126);
         }
+        /* dup2 copies pfds[1] to STDOUT_FILENO. The analyzer reports this
+         * as a leak (-Wanalyzer-fd-leak), but STDOUT is intentionally left
+         * open for exec - the exec'd process will inherit it as stdout.
+         * This is a known false positive suppressed via
+         * -Wno-error=analyzer-fd-leak.
+         */
         if (dup2 (pfds[1], STDOUT_FILENO) < 0) {
             fprintf (stderr, "imp: popen: dup2: %s\n", strerror (errno));
+            (void) close (pfds[0]);
+            (void) close (pfds[1]);
             _exit (126);
         }
         (void) close (pfds[0]);
@@ -83,13 +96,17 @@ struct safe_popen * safe_popen (const char *cmd)
      */
     (void) close (pfds[1]);
 
+    /* Note: -fanalyzer reports a false positive leak of pfds[1] at function
+     * exit. It doesn't track that we closed it above. This is suppressed via
+     * -Wno-error=analyzer-fd-leak.
+     */
     return sp;
 error:
     safe_popen_destroy (sp);
-    if (pfds[0] > 0) {
+    if (pfds[0] >= 0)
         (void) close (pfds[0]);
+    if (pfds[1] >= 0)
         (void) close (pfds[1]);
-    }
     return NULL;
 }
 

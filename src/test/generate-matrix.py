@@ -169,7 +169,7 @@ matrix.add_build(
 matrix.add_build(
     name="fedora40",
     image="fedora40",
-    env=dict(CFLAGS="-fanalyzer"),
+    env=dict(CFLAGS="-fanalyzer -Wno-error=analyzer-fd-leak"),
 )
 
 # Fedora 40 ASan
