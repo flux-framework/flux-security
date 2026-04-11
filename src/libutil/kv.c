@@ -194,6 +194,7 @@ static int kv_put_raw (struct kv *kv, const char *key, enum kv_type type,
     int vallen = strlen (val);
     if (kv_expand (kv, keylen + vallen + 3) < 0) // key\0Tval\0
         return -1;
+    assert (kv->buf != NULL);
     strlcpy (&kv->buf[kv->len], key, keylen + 1);
     kv->len += keylen + 1;
     kv->buf[kv->len++] = type;
