@@ -86,7 +86,9 @@ static void child_pfds_setup (privsep_t *ps)
      *  to bother passing to the unprivilged child.
      */
     ps->rfd = ps->upfds[0];
+    ps->upfds[0] = -1; /* Moved to rfd */
     ps->wfd = ps->ppfds[1];
+    ps->ppfds[1] = -1; /* Moved to wfd */
 
     close (ps->upfds[1]);
     ps->upfds[1] = -1;
@@ -101,7 +103,9 @@ static void parent_pfds_setup (privsep_t *ps)
      *  in parent, since they are only used in the child.
      */
     ps->rfd = ps->ppfds[0];
+    ps->ppfds[0] = -1; /* Moved to rfd */
     ps->wfd = ps->upfds[1];
+    ps->upfds[1] = -1; /* Moved to wfd */
     close (ps->ppfds[1]);
     ps->ppfds[1] = -1;
     close (ps->upfds[0]);
@@ -147,13 +151,23 @@ privsep_t * privsep_init (privsep_child_f fn, void *arg)
     ps->ppid = getpid ();
     ps->wfd = -1;
     ps->rfd = -1;
+    ps->upfds[0] = ps->upfds[1] = -1;
+    ps->ppfds[0] = ps->ppfds[1] = -1;
 
-    if (pipe2 (ps->upfds, O_CLOEXEC) < 0
-        || pipe2 (ps->ppfds, O_CLOEXEC) < 0) {
+    if (pipe2 (ps->upfds, O_CLOEXEC) < 0) {
         imp_warn ("privsep_init: pipe: %s\n", strerror (errno));
         privsep_destroy (ps);
         return (NULL);
     }
+    /* Help analyzer understand pipe2 modified the array */
+    assert (ps->upfds[0] >= 0 && ps->upfds[1] >= 0);
+
+    if (pipe2 (ps->ppfds, O_CLOEXEC) < 0) {
+        imp_warn ("privsep_init: pipe: %s\n", strerror (errno));
+        privsep_destroy (ps);
+        return (NULL);
+    }
+    assert (ps->ppfds[0] >= 0 && ps->ppfds[1] >= 0);
 
     if (run_unprivileged_child (ps, fn, arg) < 0) {
         privsep_destroy (ps);
@@ -189,6 +203,13 @@ void privsep_destroy (privsep_t *ps)
             close (ps->wfd);
         if (ps->rfd >= 0)
             close (ps->rfd);
+        /* Close any pipe fds that weren't moved to wfd/rfd yet */
+        for (int i = 0; i < 2; i++) {
+            if (ps->upfds[i] >= 0)
+                close (ps->upfds[i]);
+            if (ps->ppfds[i] >= 0)
+                close (ps->ppfds[i]);
+        }
         free (ps);
     }
 }

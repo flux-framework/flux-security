@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "argsplit.h"
 
@@ -54,20 +55,31 @@ char **argsplit (const char *args)
             s++;
     }
 
-    /*  Allocate return vector
+    /*  Allocate return vector: count+1 tokens plus NULL terminator
      */
-    if (!(argv = calloc (count+2, sizeof (char *))))
+    int argv_size = count + 2;
+    if (!(argv = calloc (argv_size, sizeof (char *))))
         goto error;
+    assert (argv_size > 0);
 
-    /*  Split into takens
+    /*  Split into tokens
      */
     i = 0;
     str = copy;
     while ((s = strtok_r (str, " \t", &sp))) {
+        str = NULL;
+        /* Defense-in-depth: verify we don't exceed allocated size. This
+         * protects against integer overflow in count, future logic bugs, and
+         * buffer overflows in security-critical setuid code. Should never
+         * trigger with correct counting logic.
+         */
+        if (i >= argv_size - 1) {
+            errno = EINVAL;
+            goto error;
+        }
         if (!(argv[i] = strdup (s)))
             goto error;
         i++;
-        str = NULL;
     }
     free (copy);
     return argv;

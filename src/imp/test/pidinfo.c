@@ -29,8 +29,11 @@ static pid_t testchild_create (int nchildren)
         BAIL_OUT ("pipe: %s", strerror (errno));
 
     pid = fork ();
-    if (pid < 0)
+    if (pid < 0) {
+        close (pfd[0]);
+        close (pfd[1]);
         return -1;
+    }
     if (pid == 0) {
         pid_t cpid[nchildren];
 

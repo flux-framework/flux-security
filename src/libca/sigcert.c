@@ -600,16 +600,22 @@ struct sigcert *sigcert_load (const char *name, bool secret)
         goto error;
     if (!(cert = sigcert_fread_public (fp)))
         goto error;
-    if (fclose (fp) < 0)
+    if (fclose (fp) < 0) {
+        fp = NULL; /* fclose() closes file even on error */
         goto error;
+    }
+    fp = NULL;
     // name - secret
     if (secret) {
         if (!(fp = fopen (name, "r")))
             goto error;
         if (sigcert_fread_secret (cert, fp) < 0)
             goto error;
-        if (fclose (fp) < 0)
+        if (fclose (fp) < 0) {
+            fp = NULL; /* fclose() closes file even on error */
             goto error;
+        }
+        fp = NULL;
     }
     return cert;
 inval:
