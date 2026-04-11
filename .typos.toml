@@ -14,6 +14,9 @@ extend-ignore-re = [
   # Allow Tru64
   'Tru64',
 ]
+[default.extend-words]
+cpy = "cpy"
+
 [default.extend-identifiers]
 gl_pathc = "gl_pathc"
 siz = "siz"

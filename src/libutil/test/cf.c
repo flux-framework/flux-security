@@ -475,7 +475,7 @@ void test_path_paranoia (void)
     if (chmod (path, 0646) < 0)
         BAIL_OUT ("chmod %s: %s", path, strerror (errno));
     ok (cf_update_file (cf, path, &error) < 0 && errno == EINVAL,
-        "cf_update_file fails on world writeable file: %s",
+        "cf_update_file fails on world writable file: %s",
         error.errbuf);
 
     /*  Disabling enable-path-paranoia works */

@@ -312,7 +312,7 @@ chmod +x run-in-cgroup.sh
 
 test_have_prereq SUDO &&
  $SUDO ./run-in-cgroup.sh $CGROUP_PATH cat /proc/self/cgroup &&
- test_set_prereq CGROUP_WRITEABLE
+ test_set_prereq CGROUP_WRITABLE
 
 
 #  Rewrite sleeper script so it results in a hierarchy of processes
@@ -323,7 +323,7 @@ printf "\$PPID\n" >$(pwd)/sleeper.pid
 EOF
 chmod +x sleeper.sh
 
-test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITEABLE \
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITABLE \
 	'flux-imp exec: SIGUSR1 sends SIGKILL via cgroup kill' '
 	fake_input_sign_none | \
 		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
@@ -337,7 +337,7 @@ test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITEABLE \
 	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
 '
 
-test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITEABLE \
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITABLE \
 	'flux-imp exec: SIGUSR1 waits for cgroup to be empty' '
 	fake_input_sign_none | \
 		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
