@@ -129,6 +129,18 @@ matrix.add_build(
     jobs=2,
 )
 
+# Ubuntu: jammy
+matrix.add_build(
+    name="jammy",
+    image="jammy",
+)
+
+# Ubuntu: noble
+matrix.add_build(
+    name="noble",
+    image="noble",
+)
+
 # Ubuntu 20.04: py3.8
 matrix.add_build(
     name="focal",
@@ -141,19 +153,31 @@ matrix.add_build(
     image="el8",
 )
 
-# Fedora 34
+# RHEL9 clone
 matrix.add_build(
-    name="fedora34",
-    image="fedora34",
+    name="el9",
+    image="el9",
+)
+
+# RHEL10 clone
+matrix.add_build(
+    name="el10",
+    image="el10",
+)
+
+# Fedora 40
+matrix.add_build(
+    name="fedora40",
+    image="fedora40",
     env=dict(CFLAGS="-fanalyzer"),
 )
 
-# Fedora 38 ASan
+# Fedora 40 ASan
 matrix.add_build(
-    name="fedora38 - asan",
-    image="fedora38",
+    name="fedora40 - asan",
+    image="fedora40",
     args="--enable-sanitizers",
-    pam=False, # asan not compatible with PAM tests
+    pam=False,  # asan not compatible with PAM tests
 )
 
 # alpine
