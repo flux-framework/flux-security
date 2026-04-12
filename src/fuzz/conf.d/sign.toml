@@ -1,0 +1,10 @@
+# Configuration for AFL fuzzing harnesses
+# Allows multiple mechanisms to increase code coverage
+
+[sign]
+max-ttl = 259200
+default-type = "none"
+allowed-types = [ "none", "munge" ]
+
+# Munge mechanism requires munged to be running
+[sign.munge]

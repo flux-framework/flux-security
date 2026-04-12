@@ -29,7 +29,8 @@ AM_CPPFLAGS = \
 noinst_PROGRAMS = \
 	fuzz_sign_unwrap \
 	fuzz_kv \
-	fuzz_sign_unwrap_noverify
+	fuzz_sign_unwrap_noverify \
+	fuzz_cf
 
 # Primary harness: sign_unwrap with verification
 fuzz_sign_unwrap_SOURCES = fuzz_sign_unwrap.c
@@ -49,5 +50,11 @@ fuzz_sign_unwrap_noverify_LDADD = \
 fuzz_kv_SOURCES = fuzz_kv.c
 fuzz_kv_LDADD = \
 	$(top_builddir)/src/libutil/libutil.la
+
+# Configuration (cf) interface harness
+fuzz_cf_SOURCES = fuzz_cf.c
+fuzz_cf_LDADD = \
+	$(top_builddir)/src/libutil/libutil.la \
+	$(top_builddir)/src/libtomlc99/libtomlc99.la
 
 endif
