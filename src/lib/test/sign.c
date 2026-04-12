@@ -471,6 +471,17 @@ void test_badpayload (flux_security_t *ctx)
         "flux_sign_unwrap fails on missing PAYLOAD.SIG with EINVAL");
     diag ("%s", flux_security_last_error (ctx));
 
+    /* Test empty payload section (double dots) - regression test for
+     * fuzzer-found bug where empty base64 section caused NULL pointer
+     * to be passed to sodium_base642bin()
+     */
+    snprintf (input, sizeof (input), "%s..none", header);
+    errno = 0;
+    ok (flux_sign_unwrap (ctx, input, NULL, NULL, NULL, 0) == 0,
+        "flux_sign_unwrap succeeds on empty PAYLOAD section (..none)");
+    ok (flux_sign_unwrap (ctx, input, NULL, NULL, NULL, FLUX_SIGN_NOVERIFY) == 0,
+        "flux_sign_unwrap NOVERIFY succeeds on empty PAYLOAD section");
+
     free (header);
 }
 
