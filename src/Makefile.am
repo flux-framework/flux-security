@@ -5,3 +5,7 @@ SUBDIRS = \
 	libca \
 	lib \
 	imp
+
+if ENABLE_FUZZING
+SUBDIRS += fuzz
+endif
