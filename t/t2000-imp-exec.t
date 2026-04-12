@@ -15,6 +15,12 @@ sign=${SHARNESS_BUILD_DIRECTORY}/t/src/sign
 
 echo "# Using ${flux_imp}"
 
+CGROUP_MOUNT=$(awk '$3 == "cgroup2" {print $2}' /proc/self/mounts)
+test -n "$CGROUP_MOUNT" || bail_out "Failed to get cgroup2 mount dir!"
+CURRENT_CGROUP_PATH=$(cat /proc/self/cgroup | sed -n s/^0:://p)
+CGROUP_PATH="${CGROUP_MOUNT}${CURRENT_CGROUP_PATH}/imp-shell.$$"
+echo "using CGROUP_PATH=$CGROUP_PATH"
+
 fake_imp_input() {
 	printf '{"J":"%s"}' $(echo $1 | $sign)
 }
@@ -289,10 +295,6 @@ test_expect_success SUDO,NO_CHAIN_LINT,SYSTEMD_RUN \
 	test_expect_code 137 wait $pid
 '
 
-CGROUP_MOUNT=$(awk '/^cgroup2/ {print $2}' /proc/self/mounts)
-CURRENT_CGROUP_PATH=$(cat /proc/self/cgroup | sed -n s/^0:://p)
-CGROUP_PATH="${CGROUP_MOUNT}${CURRENT_CGROUP_PATH}/imp-shell.$$"
-echo "using CGROUP_PATH=$CGROUP_PATH"
 test_have_prereq SUDO &&
  $SUDO mkdir $CGROUP_PATH &&
  test_set_prereq CGROUPFS &&
