@@ -1996,7 +1996,7 @@ int toml_rtoi(const char* src, int64_t* ret_)
 		switch (ch) {
 		case '_':
 			// disallow '__'
-			if (s[0] == '_') return -1; 
+			if (s[0] == '_') return -1;
 			continue;			/* skip _ */
 		default:
 			break;
@@ -2006,7 +2006,8 @@ int toml_rtoi(const char* src, int64_t* ret_)
 	if (*s || p == q) return -1;
 
 	/* last char cannot be '_' */
-	if (s[-1] == '_') return -1;
+	/* SECURITY: check s > src to avoid reading before buffer (heap underflow) */
+	if (s > src && s[-1] == '_') return -1;
 	
 	/* cap with NUL */
 	*p = 0;
