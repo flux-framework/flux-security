@@ -1658,9 +1658,9 @@ static tokentype_t scan_string(context_t* ctx, char* p, int lineno, int dotisspe
 	/* check for timestamp without quotes */
 	if (0 == scan_date(p, 0, 0, 0) || 0 == scan_time(p, 0, 0, 0)) {
 		// forward thru the timestamp
-		for ( ; strchr("0123456789.:+-T Z", toupper(*p)); p++);
+		for ( ; *p && strchr("0123456789.:+-T Z", toupper(*p)); p++);
 		// squeeze out any spaces at end of string
-		for ( ; p[-1] == ' '; p--);
+		for ( ; p > orig && p[-1] == ' '; p--);
 		// tokenize
 		return ret_token(ctx, STRING, lineno, orig, p - orig);
 	}
