@@ -262,7 +262,7 @@ static FILE *fopen_mode (const char *pathname, mode_t mode)
     int fd;
     FILE *fp;
 
-    if ((fd = open (pathname, O_WRONLY | O_TRUNC | O_CREAT, mode)) < 0)
+    if ((fd = open (pathname, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)) < 0)
         return NULL;
     if (!(fp = fdopen (fd, "w"))) {
         close (fd);
