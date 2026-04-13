@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
@@ -254,6 +255,210 @@ void test_corner (void)
     json_decref (obj);
 }
 
+/* Test cases derived from AFL++ fuzzer hang findings.
+ * These inputs previously caused libtomlc99 to hang indefinitely.
+ * The validation layer now rejects them quickly with clear error messages.
+ */
+void test_afl_hangs (void)
+{
+    toml_table_t *tab;
+    struct tomltk_error error;
+
+    /* Test 1: Embedded NULL bytes (findings-cf id:000000, 000003, 000006)
+     * NULL bytes in TOML input can cause parser to hang in string processing.
+     * Example: key = "value\x00more"
+     */
+    const char null_bytes[] = "key = \"test\x00value\"";
+    errno = 0;
+    tab = tomltk_parse (null_bytes, sizeof(null_bytes)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: embedded NULL byte rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 2: Invalid UTF-8 sequences (findings-cf id:000000, 000005, 000006)
+     * Invalid UTF-8 bytes (0x80-0xFF not in valid sequences) cause hangs.
+     * AFL found: 0x80, 0x81, 0x92, 0xFF, 0xD1 in various contexts.
+     */
+    const unsigned char invalid_utf8_1[] = "key = \"test\x92value\"";  // 0x92 = invalid
+    errno = 0;
+    tab = tomltk_parse ((char*)invalid_utf8_1, sizeof(invalid_utf8_1)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: invalid UTF-8 byte 0x92 rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    const unsigned char invalid_utf8_2[] = "allow\x81-sudo = true";  // 0x81 = invalid
+    errno = 0;
+    tab = tomltk_parse ((char*)invalid_utf8_2, sizeof(invalid_utf8_2)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: invalid UTF-8 byte 0x81 rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    const unsigned char invalid_utf8_3[] = "ip = \"192.168.\xD1.1\"";  // 0xD1 = invalid (needs continuation)
+    errno = 0;
+    tab = tomltk_parse ((char*)invalid_utf8_3, sizeof(invalid_utf8_3)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: invalid UTF-8 byte 0xD1 (truncated sequence) rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 3: Control characters outside strings (findings-cf id:000003, 000006)
+     * Control chars (0x01-0x1F except \t,\n,\r) between tokens cause parser hangs.
+     * AFL found: 0x03, 0x04, 0xE8 embedded in unquoted context.
+     */
+    const unsigned char control_chars[] = "key\x04= value";  // 0x04 between key and =
+    errno = 0;
+    tab = tomltk_parse ((char*)control_chars, sizeof(control_chars)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: control character 0x04 rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 4: Excessive bracket nesting (findings-cf id:000006, fuzzer04 id:000004)
+     * Deeply nested arrays cause stack overflow or infinite recursion in parser.
+     * id:000006 had 18 brackets, id:000004 had 618 brackets!
+     * MAX_NESTING = 32 should catch these.
+     */
+    const char deep_nest[] =
+        "key = [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["  // 40 opening brackets
+        "1"
+        "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";        // 40 closing brackets
+    errno = 0;
+    tab = tomltk_parse (deep_nest, strlen(deep_nest), &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: excessive bracket nesting (40 levels) rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 5: Adjacent triple-quote sequences (fuzzer04 id:000000)
+     * Patterns like '''''' or """""" (6 consecutive quotes) create ambiguous
+     * zero-length multi-line strings that cause infinite loops.
+     */
+    const char six_single_quotes[] = "key = ''''''";
+    errno = 0;
+    tab = tomltk_parse (six_single_quotes, strlen(six_single_quotes), &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: six consecutive single quotes rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    const char six_double_quotes[] = "key = \"\"\"\"\"\"";
+    errno = 0;
+    tab = tomltk_parse (six_double_quotes, strlen(six_double_quotes), &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: six consecutive double quotes rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 6: Combined patterns - NULL + invalid UTF-8 + control chars
+     * Real AFL finding from id:000006: multiple issues in one input.
+     */
+    const unsigned char combined[] = {
+        0x61, 0x4c, 0x6c, 0x6f, 0x3d, 0x20,  // aLlo=
+        0x5b, 0x5b, 0x5b, 0x5b, 0x5b, 0x5b,  // [[[[[[
+        0x77, 0x2d, 0x00, 0x00, 0x04, 0x00,  // w-\x00\x00\x04\x00
+        0x20, 0x3d, 0x20, 0x74, 0x72, 0x75, 0x65  // = true
+    };
+    errno = 0;
+    tab = tomltk_parse ((char*)combined, sizeof(combined), &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang: combined NULL+control+nesting rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 7: Valid UTF-8 multi-byte sequences should still work
+     * Ensure our UTF-8 validator doesn't reject legitimate multi-byte chars.
+     */
+    const unsigned char valid_utf8[] = {
+        0x6e, 0x61, 0x6d, 0x65, 0x20, 0x3d, 0x20, 0x22,  // name = "
+        0xC3, 0xA9, 0x6C, 0xC3, 0xA8, 0x76, 0x65,        // élève (French: student)
+        0x22  // "
+    };
+    errno = 0;
+    tab = tomltk_parse ((char*)valid_utf8, sizeof(valid_utf8), &error);
+    ok (tab != NULL,
+        "Valid UTF-8 multi-byte chars (é, è) accepted");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+    else
+        toml_free (tab);
+
+    /* Test 8: Excessive input size
+     * While not technically a "hang", AFL generates huge inputs that waste time.
+     * MAX_LINES=10000 should reject these quickly.
+     */
+    const int huge_lines = 15000;
+    char *huge_input = malloc(huge_lines * 10);  // ~150KB of newlines
+    if (huge_input) {
+        for (int i = 0; i < huge_lines * 10; i += 10) {
+            memcpy(huge_input + i, "k = 1\n", 6);
+            memset(huge_input + i + 6, '\n', 4);
+        }
+        errno = 0;
+        tab = tomltk_parse (huge_input, huge_lines * 10, &error);
+        ok (tab == NULL && errno == EINVAL,
+            "AFL hang: excessive input size (>10000 lines) rejected");
+        if (tab == NULL)
+            diag ("  error: %s", error.errbuf);
+        free (huge_input);
+    }
+
+    /* Test 9: Invalid UTF-8 inside strings (fuzzer04 id:000011)
+     * Invalid bytes 0xFF, 0x7F inside quoted strings.
+     * String content: f\xFF\x7Fse
+     */
+    const unsigned char invalid_in_string[] =
+        "string3 = \"\"\"\nmultabool2 = f\xff\x7fse\n\"\"\"";
+    errno = 0;
+    tab = tomltk_parse ((char*)invalid_in_string,
+                        sizeof(invalid_in_string)-1, &error);
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang fuzzer04-11: invalid UTF-8 (0xFF,0x7F) in string rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+
+    /* Test 10: Long repetitive content with 4-quote pattern (fuzzer04 id:000012)
+     * Long runs of 'J' chars (200+ bytes) followed by anomalous quote pattern.
+     * This tests both string length handling and quote state tracking.
+     */
+    const char long_repetitive[] =
+        "string3 = \"\"\"\n"
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ"
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ"
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ"
+        "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ"
+        "22\n\"\"\"";
+    errno = 0;
+    tab = tomltk_parse (long_repetitive, strlen(long_repetitive), &error);
+    // This should either parse successfully or reject cleanly (not hang)
+    if (tab != NULL) {
+        pass ("AFL hang fuzzer04-12: long repetitive pattern completed");
+        toml_free (tab);
+    } else {
+        ok (errno == EINVAL,
+            "AFL hang fuzzer04-12: long repetitive pattern rejected cleanly");
+        diag ("  error: %s", error.errbuf);
+    }
+
+    /* Test 11: Repetitive timestamp patterns (fuzzer04 id:000013)
+     * Many malformed timestamp-like strings with commas inside.
+     * Example: 1979-05-27T07:32:00+,pty_,+,1979-05-27...
+     * Tests parser's timestamp validation and comma handling.
+     */
+    const char timestamp_spam[] =
+        "bool1 = tru::bool2t5-27T07:42:00+,pty_,+,1979-05-27T07:32:79-05-27T:00+,"
+        "+,1979-05-27T07:32:00+,1979-05-27T07:2:00+,pty_,+,1979-05-27T07:32:00";
+    errno = 0;
+    tab = tomltk_parse (timestamp_spam, strlen(timestamp_spam), &error);
+    // Should reject due to malformed syntax, not hang
+    ok (tab == NULL && errno == EINVAL,
+        "AFL hang fuzzer04-13: repetitive timestamp patterns rejected");
+    if (tab == NULL)
+        diag ("  error: %s", error.errbuf);
+}
+
 int main (int argc, char *argv[])
 {
     plan (NO_PLAN);
@@ -264,6 +469,7 @@ int main (int argc, char *argv[])
     test_tojson_t3 ();
     test_parse_lineno ();
     test_corner ();
+    test_afl_hangs ();
 
     done_testing ();
 }
