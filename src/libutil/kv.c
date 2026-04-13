@@ -168,7 +168,10 @@ int kv_delete (struct kv *kv, const char *key)
         return -1;
     entry_offset = entry - kv->buf;
     entry_len = entry_length (entry, kv->len - entry_offset);
-    assert (entry_len >= 0);
+    if (entry_len < 0) {
+        errno = EINVAL;
+        return -1;
+    }
     memmove (kv->buf + entry_offset,
              kv->buf + entry_offset + entry_len,
              kv->len - entry_offset - entry_len);
