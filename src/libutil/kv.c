@@ -288,12 +288,32 @@ const char *kv_val_string (const char *key)
 
 int64_t kv_val_int64 (const char *key)
 {
-    return strtoll (kv_val_string (key), NULL, 10);
+    const char *s = kv_val_string (key);
+    char *endptr;
+    int64_t val;
+
+    errno = 0;
+    val = strtoll (s, &endptr, 10);
+    if (errno != 0 || endptr == s || *endptr != '\0') {
+        errno = EINVAL;
+        return 0;
+    }
+    return val;
 }
 
 double kv_val_double (const char *key)
 {
-    return strtod (kv_val_string (key), NULL);
+    const char *s = kv_val_string (key);
+    char *endptr;
+    double val;
+
+    errno = 0;
+    val = strtod (s, &endptr);
+    if (errno != 0 || endptr == s || *endptr != '\0') {
+        errno = EINVAL;
+        return 0.;
+    }
+    return val;
 }
 
 bool kv_val_bool (const char *key)
@@ -346,14 +366,22 @@ int kv_vget (const struct kv *kv, const char *key,
         }
         case KV_INT64: {
             int64_t *val = va_arg (ap, int64_t *);
-            if (val)
+            if (val) {
+                errno = 0;
                 *val = kv_val_int64 (entry);
+                if (errno != 0)
+                    return -1;
+            }
             break;
         }
         case KV_DOUBLE: {
             double *val = va_arg (ap, double *);
-            if (val)
+            if (val) {
+                errno = 0;
                 *val = kv_val_double (entry);
+                if (errno != 0)
+                    return -1;
+            }
             break;
         }
         case KV_BOOL: {
