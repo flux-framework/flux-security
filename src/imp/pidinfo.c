@@ -44,11 +44,16 @@ static int parse_pid (const char *s, pid_t *ppid)
     errno = 0;
     val = strtoul (s, &endptr, 10);
 
-    if (errno != 0 && (val == 0 || val == ULONG_MAX))
+    if (errno != 0)
         return -1;
 
     if ((*endptr != '\0' && *endptr != '\n') || endptr == s) {
         errno = EINVAL;
+        return -1;
+    }
+
+    if (val > INT32_MAX) {
+        errno = ERANGE;
         return -1;
     }
 
@@ -172,7 +177,7 @@ int pid_kill_children (pid_t pid, int sig)
         return -1;
     }
     while (fscanf (fp, " %lu", &child) == 1) {
-        if (child <= 1 || (pid_t)child == pid) {
+        if (child <= 1 || child > INT32_MAX || (pid_t)child == pid) {
             imp_warn ("Ignoring suspect pid %lu from %s", child, path);
             continue;
         }

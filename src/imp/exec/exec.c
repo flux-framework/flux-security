@@ -220,8 +220,9 @@ static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)
     execvp (exec->shell, argv);
 
     if (errno == EPERM || errno == EACCES)
-        exit_code =  126;
-    exit_code = 127;
+        exit_code = 126;
+    else
+        exit_code = 127;
     imp_die (exit_code, "%s: %s", exec->shell, strerror (errno));
 }
 

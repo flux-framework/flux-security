@@ -13,6 +13,7 @@
 #endif
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -115,6 +116,12 @@ static void parent_pfds_setup (privsep_t *ps)
 static int
 run_unprivileged_child (privsep_t *ps, privsep_child_f fn, void *arg)
 {
+    /*  Flush all stdio buffers before fork so the child does not inherit
+     *   buffered output from the parent. Without this, the child's exit()
+     *   would flush the parent's pending output a second time.
+     */
+    fflush (NULL);
+
     if ((ps->cpid = fork ()) < 0) {
         imp_warn ("fork: %s\n", strerror (errno));
         return (-1);
@@ -187,13 +194,12 @@ int privsep_wait (privsep_t *ps)
     int status = 0;
     if (privsep_is_parent (ps)) {
         if (ps->cpid > (pid_t) 0) {
-            kill (SIGTERM, ps->cpid);
             if (waitpid (ps->cpid, &status, 0) < 0)
                 status = -1;
             ps->cpid = (pid_t) -1;
         }
     }
-    return (status == 0 ? 0 : -1);
+    return ((WIFEXITED (status) && WEXITSTATUS (status) == 0) ? 0 : -1);
 }
 
 void privsep_destroy (privsep_t *ps)
