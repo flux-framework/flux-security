@@ -332,6 +332,13 @@ static struct kv *header_decode (const char *input, const char **endptr)
     }
     src = input;
     srclen = p - input;
+
+    /* Empty header is invalid - header must contain version and mechanism */
+    if (srclen == 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+
     dstlen = BASE64_DECODE_SIZE (srclen);
     if (!(dst = malloc (dstlen)))
         return NULL;
@@ -372,6 +379,15 @@ static int payload_decode_cpy (const char *input, void **buf, int *bufsz,
     }
     src = input;
     srclen = p - input;
+
+    /* Handle empty payload (e.g., "HEADER..SIGNATURE")
+     * Skip decoding to avoid passing NULL to sodium_base642bin()
+     */
+    if (srclen == 0) {
+        *endptr = p;
+        return 0;
+    }
+
     dstlen = BASE64_DECODE_SIZE (srclen);
     if (grow_buf (buf, bufsz, dstlen) < 0)
         return -1;

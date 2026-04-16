@@ -223,7 +223,7 @@ int ca_revoke (const struct ca *ca, const char *uuid, ca_error_t e)
         errno = EINVAL;
         goto error;
     }
-    if ((fd = open (path, O_WRONLY | O_CREAT, 0644)) < 0) {
+    if ((fd = open (path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644)) < 0) {
         ca_error (e, "%s: %s", path, strerror (errno));
         return -1;
     }

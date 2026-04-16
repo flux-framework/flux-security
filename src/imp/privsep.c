@@ -66,7 +66,7 @@ void drop_privileges ()
     uid_t ruid = -1, euid, suid;
     gid_t rgid = -1, egid, sgid;
 
-    if (  (getresuid (&ruid, &euid, &suid) < 0)
+    if ((getresuid (&ruid, &euid, &suid) < 0)
        || (getresgid (&rgid, &egid, &sgid) < 0))
         imp_die (1, "getresuid/getresgid");
 
@@ -77,7 +77,9 @@ void drop_privileges ()
 
      /*  Verify privilege cannot be restored */
     if (setreuid (-1, 0) == 0)
-        imp_die (1, "irreversible switch to uid %ju failed", (uintmax_t) ruid);
+        imp_die (1,
+	         "irreversible switch to uid %ju failed",
+                 (uintmax_t) ruid);
 }
 
 static void child_pfds_setup (privsep_t *ps)

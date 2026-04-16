@@ -1658,9 +1658,9 @@ static tokentype_t scan_string(context_t* ctx, char* p, int lineno, int dotisspe
 	/* check for timestamp without quotes */
 	if (0 == scan_date(p, 0, 0, 0) || 0 == scan_time(p, 0, 0, 0)) {
 		// forward thru the timestamp
-		for ( ; strchr("0123456789.:+-T Z", toupper(*p)); p++);
+		for ( ; *p && strchr("0123456789.:+-T Z", toupper(*p)); p++);
 		// squeeze out any spaces at end of string
-		for ( ; p[-1] == ' '; p--);
+		for ( ; p > orig && p[-1] == ' '; p--);
 		// tokenize
 		return ret_token(ctx, STRING, lineno, orig, p - orig);
 	}
@@ -1996,7 +1996,7 @@ int toml_rtoi(const char* src, int64_t* ret_)
 		switch (ch) {
 		case '_':
 			// disallow '__'
-			if (s[0] == '_') return -1; 
+			if (s[0] == '_') return -1;
 			continue;			/* skip _ */
 		default:
 			break;
@@ -2006,7 +2006,8 @@ int toml_rtoi(const char* src, int64_t* ret_)
 	if (*s || p == q) return -1;
 
 	/* last char cannot be '_' */
-	if (s[-1] == '_') return -1;
+	/* SECURITY: check s > src to avoid reading before buffer (heap underflow) */
+	if (s > src && s[-1] == '_') return -1;
 	
 	/* cap with NUL */
 	*p = 0;
@@ -2051,12 +2052,13 @@ int toml_rtod_ex(const char* src, double* ret_, char* buf, int buflen)
 		int ch = *s++;
 		switch (ch) {
 		case '.':
-			if (s[-2] == '_') return -1;
+			/* SECURITY: check s - 2 >= src to avoid reading before buffer */
+			if (s - 2 >= src && s[-2] == '_') return -1;
 			if (s[0] == '_') return -1;
 			break;
 		case '_':
 			// disallow '__'
-			if (s[0] == '_') return -1; 
+			if (s[0] == '_') return -1;
 			continue;			/* skip _ */
 		default:
 			break;
@@ -2064,9 +2066,10 @@ int toml_rtod_ex(const char* src, double* ret_, char* buf, int buflen)
 		*p++ = ch;
 	}
 	if (*s || p == q) return -1; /* reached end of string or buffer is full? */
-	
+
 	/* last char cannot be '_' */
-	if (s[-1] == '_') return -1;
+	/* SECURITY: check s > src to avoid reading before buffer (heap underflow) */
+	if (s > src && s[-1] == '_') return -1;
 
 	if (p != buf && p[-1] == '.') 
 		return -1; /* no trailing zero */

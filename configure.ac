@@ -63,6 +63,21 @@ AC_DEFINE([SANITIZERS_ENABLED], 1,
 [AC_MSG_RESULT(no)])
 AM_CONDITIONAL([SANITIZERS_ENABLED], [test "x$enable_sanitizers" != "xno" ])
 
+#
+#  If --enable-fuzzing, check that AFL compiler is being used
+#
+AC_MSG_CHECKING([whether to enable AFL fuzzing harnesses])
+AC_ARG_ENABLE([fuzzing],
+              AS_HELP_STRING([--enable-fuzzing], [Build AFL fuzzing harnesses]),
+[
+AC_MSG_RESULT($enableval)
+AS_CASE([$CC],
+        [*afl-clang-fast*|*afl-gcc*|*afl-clang*], [],
+        [AC_MSG_ERROR([--enable-fuzzing requires CC to be an AFL compiler (afl-clang-fast, afl-gcc, etc.)])])
+],
+[AC_MSG_RESULT(no)])
+AM_CONDITIONAL([ENABLE_FUZZING], [test "x$enable_fuzzing" = "xyes"])
+
 AC_CHECK_LIB(m, floor)
 
 #
@@ -182,6 +197,7 @@ AC_CONFIG_FILES( \
   src/libutil/Makefile \
   src/libca/Makefile \
   src/imp/Makefile \
+  src/fuzz/Makefile \
   doc/Makefile \
   doc/test/Makefile \
   etc/Makefile \
