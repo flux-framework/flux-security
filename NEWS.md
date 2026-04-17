@@ -1,3 +1,27 @@
+flux-security version 0.15.0 - 2026-04-16
+-----------------------------------------
+
+## Fixes
+ * fuzz: add initial fuzzing harness to flux-security using AFL++ and fix
+   detected issues (#221)
+ * fix minor issues discovered during security audit (#222)
+ * imp/cgroup: do not automatically error out if /sys/fs/cgroup/unified is
+   missing (#207)
+ * lib: avoid discarded-qualifiers error with gcc-16 (#211)
+
+## Build/Test/Cleanup
+ * testsuite: fix cgroup mount dir detection in `t2000-imp-exec.t` (#220)
+ * test: avoid maybe-uninitialized error with gcc-16 (#216)
+ * ci: modernize builders in CI and fix new `-fanalyzer` bugs (#219)
+ * ci: update github action versions and add dependabot to maintain them
+   (#218)
+ * ci: update typos version and github actions builders (#209)
+ * mergify: disable temporary PR branches (#208)
+ * doc: copy MAINTAINERS, CONTRIBUTING from flux-core (#212)
+ * MAINTAINERS.md: drop non-maintainers (#223)
+ * doc: remove reference to flux-workflow-examples in config (#214)
+ * doc: remove reference to flux-mini(1) (#213)
+
 flux-security version 0.14.0 - 2025-02-27
 -----------------------------------------
 
