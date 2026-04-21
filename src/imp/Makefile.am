@@ -67,7 +67,9 @@ IMP_SOURCES = \
 	exec/user.c \
 	exec/exec.c \
 	exec/safe_popen.h \
-	exec/safe_popen.c
+	exec/safe_popen.c \
+	exec/device.h \
+	exec/device.c
 
 if HAVE_PAM
 IMP_SOURCES += \
