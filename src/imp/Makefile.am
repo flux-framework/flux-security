@@ -62,6 +62,8 @@ IMP_SOURCES = \
 	signals.h \
 	cgroup.c \
 	cgroup.h \
+	cgroup_device.c \
+	cgroup_device.h \
 	run.c \
 	exec/user.h \
 	exec/user.c \
