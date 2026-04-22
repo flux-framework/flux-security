@@ -1,12 +1,8 @@
-man3
-====
+Section 3 - C Library Functions
+================================
 
 .. toctree::
-  :caption: C Library Functions
-  :maxdepth: 1
+   :maxdepth: 1
+   :glob:
 
-  flux_security_create
-  flux_sign_wrap
-  flux_sign_unwrap
-  flux_security_last_error
-  flux_security_aux_set
+   *

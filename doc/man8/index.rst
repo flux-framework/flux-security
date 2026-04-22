@@ -1,8 +1,8 @@
-man8
-====
+Section 8 - System Administration
+===================================
 
 .. toctree::
-  :caption: System commands
-  :maxdepth: 1
+   :maxdepth: 1
+   :glob:
 
-  flux-imp
+   *

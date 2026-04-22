@@ -90,6 +90,8 @@ EXTRA_DIST = \
 	manpages.py \
 	domainrefs.py \
 	index.rst \
+	index_man.rst \
+	guide/internals.rst \
 	requirements.txt \
 	man3/index.rst \
 	man5/index.rst \

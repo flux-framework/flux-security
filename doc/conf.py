@@ -22,6 +22,9 @@
 #
 import os
 import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).absolute().parent))
+
 from manpages import man_pages
 import docutils.nodes
 

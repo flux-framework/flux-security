@@ -1,10 +1,8 @@
-man5
-====
+Section 5 - File Formats and Conventions
+=========================================
 
 .. toctree::
-  :caption: File formats and conventions
-  :maxdepth: 1
+   :maxdepth: 1
+   :glob:
 
-  flux-config-security
-  flux-config-security-imp
-  flux-config-security-sign
+   *
