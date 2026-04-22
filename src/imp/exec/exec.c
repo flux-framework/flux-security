@@ -186,6 +186,7 @@ static void imp_exec_init_stream (struct imp_exec *exec, FILE *fp)
 {
     struct imp_state *imp;
     json_error_t err;
+    json_t *options = NULL;
 
     assert (exec != NULL && exec->imp != NULL && fp != NULL);
 
@@ -205,11 +206,17 @@ static void imp_exec_init_stream (struct imp_exec *exec, FILE *fp)
         || json_unpack_ex (exec->input,
                            &err,
                            0,
-                           "{s:s}",
-                           "J", &exec->J) < 0)
+                           "{s:s s?o}",
+                           "J", &exec->J,
+                           "options", &options) < 0)
         imp_die (1, "exec: invalid json input: %s", err.text);
 
     imp_exec_unwrap (exec, exec->J);
+
+    if (device_allow_from_options (options, &exec->da) < 0)
+        imp_die (1,
+                 "exec: failed to parse device containment policy: %s",
+                 strerror (errno));
 }
 
 static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)

@@ -11,6 +11,7 @@
 #ifndef IMP_EXEC_DEVICE_H
 #define IMP_EXEC_DEVICE_H
 
+#include <jansson.h>
 #include "src/libutil/kv.h"
 
 #define DEVICE_ALLOW_MAX_ENTRIES 512
@@ -31,6 +32,14 @@ struct device_allow {
     struct device_allow_entry *entries;
     int count;
 };
+
+/* Parse device_allow from JSON options dict (received from IMP input).
+ * options may be NULL to indicate "no input options".
+ * Returns 0 with *dap set to NULL if no containment is configured.
+ * Returns 0 with *dap set on success.
+ * Returns -1 with errno set on parse error.
+ */
+int device_allow_from_options (json_t *options, struct device_allow **dap);
 
 /* Decode device_allow from a kv namespace.
  * Returns 0 with *dap set to NULL if "device.count" is absent (no containment).
