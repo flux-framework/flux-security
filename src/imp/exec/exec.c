@@ -49,6 +49,7 @@
 #include "safe_popen.h"
 #include "signals.h"
 #include "device.h"
+#include "cgroup_device.h"
 
 #if HAVE_PAM
 #include "pam.h"
@@ -279,6 +280,12 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
                  "--enable-pam");
 #endif /* HAVE_PAM */
     }
+
+    /* Apply BPF device containment policy to job cgroup */
+    if (cgroup_device_apply (imp->cgroup, exec->da) < 0)
+        imp_die (1,
+                 "exec: failed to apply device containment policy: %s",
+                 strerror (errno));
 
     /* Block signals so parent IMP isn't unduly terminated */
     imp_sigblock_all ();
