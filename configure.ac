@@ -136,6 +136,9 @@ LT_INIT
 AC_CHECK_HEADERS( \
   [linux/magic.h] \
 )
+AC_CHECK_HEADER([linux/bpf.h], [],
+  [AC_MSG_FAILURE([linux/bpf.h not found (install linux-libc-dev or kernel-headers)])]
+)
 
 #
 #  Checks for functions
