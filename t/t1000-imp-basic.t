@@ -94,4 +94,15 @@ test_expect_success SUID_ENABLED 'flux-imp setuid ignores SUDO_USER' '
 	EOF
 	test_cmp expected.whoami.no output.whoami.no
 '
+test_expect_success 'log-level = debug is accepted' '
+	printf "log-level = \"debug\"\n" > loglevel-debug.toml &&
+	( export FLUX_IMP_CONFIG_PATTERN=loglevel-debug.toml &&
+	  $flux_imp version )
+'
+test_expect_success 'unknown log-level generates a warning' '
+	printf "log-level = \"verbose\"\n" > loglevel-bad.toml &&
+	( export FLUX_IMP_CONFIG_PATTERN=loglevel-bad.toml &&
+	  $flux_imp version 2>loglevel-bad.err ) &&
+	grep "unknown log-level" loglevel-bad.err
+'
 test_done
