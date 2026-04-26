@@ -35,6 +35,7 @@ extern int imp_conf_init (cf_t *cf, struct cf_error *error);
 /*  Static prototypes:
  */
 static void initialize_logging ();
+static void initialize_log_level (cf_t *conf);
 static int  imp_state_init (struct imp_state *imp, int argc, char **argv);
 static cf_t * imp_conf_load (const char *pattern);
 static bool imp_is_privileged ();
@@ -58,6 +59,8 @@ int main (int argc, char *argv[])
      */
     if (!(imp.conf = imp_conf_load (imp_get_config_pattern ())))
         imp_die (1, "Failed to load configuration");
+
+    initialize_log_level (imp.conf);
 
     /*  Get current IMP cgroup information:
      */
@@ -118,6 +121,34 @@ static void initialize_logging (void)
         fprintf (stderr, "flux-imp: Fatal: Failed to initialize logging.\n");
         exit (1);
     }
+}
+
+static int parse_log_level (const char *s)
+{
+    if (strcmp (s, "debug") == 0)
+        return IMP_LOG_DEBUG;
+    if (strcmp (s, "info") == 0)
+        return IMP_LOG_INFO;
+    if (strcmp (s, "warning") == 0)
+        return IMP_LOG_WARNING;
+    return -1;
+}
+
+static void initialize_log_level (cf_t *conf)
+{
+    const cf_t *cf;
+    const char *s;
+    int level;
+
+    if (!(cf = cf_get_in (conf, "log-level")))
+        return;
+    s = cf_string (cf);
+    if ((level = parse_log_level (s)) < 0) {
+        imp_warn ("unknown log-level '%s', ignoring", s);
+        return;
+    }
+    imp_log_set_level (NULL, level);
+    imp_log_set_level ("stderr", level);
 }
 
 static int imp_state_init (struct imp_state *imp, int argc, char *argv[])
