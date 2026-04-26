@@ -99,6 +99,12 @@ allow-sudo
    Set to true if the IMP should simulate a setuid installation when run
    under :linux:man8:`sudo`. This option is only useful for testing.
 
+log-level
+   Set the logging verbosity to ``warning``, ``info`` (default), or
+   ``debug``. Setting ``debug`` enables diagnostic messages useful for
+   testing and troubleshooting. This option should not be set in
+   production.
+
 EXAMPLE
 =======
 
