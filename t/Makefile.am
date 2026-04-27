@@ -22,7 +22,8 @@ TESTSCRIPTS = \
 	t1003-sign-curve.t \
 	t2000-imp-exec.t \
 	t2002-imp-run.t \
-	t2003-imp-exec-pam.t
+	t2003-imp-exec-pam.t \
+	t2004-imp-exec-device.t
 
 TESTS = \
 	$(TESTSCRIPTS)
@@ -40,7 +41,8 @@ check_PROGRAMS = \
 	src/xsign_munge \
 	src/xsign_curve \
 	src/uidlookup \
-	src/sanitizers-enabled
+	src/sanitizers-enabled \
+	src/bpf_cgroup_probe
 
 check_LTLIBRARIES = \
 	src/getpwuid.la
@@ -101,6 +103,8 @@ src_xsign_curve_LDADD = $(test_ldadd)
 src_uidlookup_SOURCES = src/uidlookup.c
 src_uidlookup_CPPFLAGS = $(test_cppflags)
 src_uidlookup_LDADD = $(test_ldadd)
+
+src_bpf_cgroup_probe_SOURCES = src/bpf_cgroup_probe.c
 
 EXTRA_DIST= \
 	sharness.sh \

@@ -20,4 +20,25 @@
  */
 #define BASE64_DECODE_SIZE(x) ((((x) + 3) / 4) * 3)
 
+
+#ifndef streq
+#define streq(x,y) (strcmp((x),(y)) == 0)
+#endif
+
+#ifndef strstarts
+#define strstarts(x,y) (strncmp((x),(y),strlen(y)) == 0)
+#endif
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
+#endif
+
+#ifndef ERRNO_SAFE_WRAP
+#define ERRNO_SAFE_WRAP(fun, ...) do { \
+        int saved_errno = errno; \
+        (fun)(__VA_ARGS__); \
+        errno = saved_errno; \
+} while (0)
+#endif
+
 #endif

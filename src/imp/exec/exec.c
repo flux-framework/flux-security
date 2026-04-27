@@ -48,6 +48,8 @@
 #include "user.h"
 #include "safe_popen.h"
 #include "signals.h"
+#include "device.h"
+#include "cgroup_device.h"
 
 #if HAVE_PAM
 #include "pam.h"
@@ -67,6 +69,7 @@ struct imp_exec {
     struct kv *args;
     const void *spec;
     int specsz;
+    struct device_allow *da;
 };
 
 extern const char *imp_get_security_config_pattern (void);
@@ -116,6 +119,7 @@ static void imp_exec_destroy (struct imp_exec *exec)
         passwd_destroy (exec->user_pwd);
         passwd_destroy (exec->imp_pwd);
         kv_destroy (exec->args);
+        device_allow_destroy (exec->da);
         free (exec);
     }
 }
@@ -170,6 +174,12 @@ static void imp_exec_init_kv (struct imp_exec *exec, struct kv *kv)
     if (!(exec->args = kv_split (kv, "args")))
         imp_die (1, "exec: Failed to get job shell arguments");
 
+    /* Optional device containment — absent means no containment */
+    if (device_allow_decode (kv, &exec->da) < 0)
+        imp_die (1,
+                 "exec: failed to decode device containment policy: %s",
+                 strerror (errno));
+
     imp_exec_unwrap (exec, exec->J);
 }
 
@@ -177,6 +187,7 @@ static void imp_exec_init_stream (struct imp_exec *exec, FILE *fp)
 {
     struct imp_state *imp;
     json_error_t err;
+    json_t *options = NULL;
 
     assert (exec != NULL && exec->imp != NULL && fp != NULL);
 
@@ -196,11 +207,17 @@ static void imp_exec_init_stream (struct imp_exec *exec, FILE *fp)
         || json_unpack_ex (exec->input,
                            &err,
                            0,
-                           "{s:s}",
-                           "J", &exec->J) < 0)
+                           "{s:s s?o}",
+                           "J", &exec->J,
+                           "options", &options) < 0)
         imp_die (1, "exec: invalid json input: %s", err.text);
 
     imp_exec_unwrap (exec, exec->J);
+
+    if (device_allow_from_options (options, &exec->da) < 0)
+        imp_die (1,
+                 "exec: failed to parse device containment policy: %s",
+                 strerror (errno));
 }
 
 static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)
@@ -263,6 +280,12 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
                  "--enable-pam");
 #endif /* HAVE_PAM */
     }
+
+    /* Apply BPF device containment policy to job cgroup */
+    if (cgroup_device_apply (imp->cgroup, exec->da) < 0)
+        imp_die (1,
+                 "exec: failed to apply device containment policy: %s",
+                 strerror (errno));
 
     /* Block signals so parent IMP isn't unduly terminated */
     imp_sigblock_all ();
@@ -353,6 +376,10 @@ static void imp_exec_put_kv (struct imp_exec *exec,
         imp_die (1, "exec: Failed to get job shell path");
     if (kv_join (kv, exec->args, "args") < 0)
         imp_die (1, "exec: Failed to set job shell arguments");
+    if (exec->da && device_allow_encode (exec->da, kv) < 0)
+        imp_die (1,
+                 "exec: failed to encode device policy: %s",
+                 strerror (errno));
 }
 
 /*  Read IMP input using a helper process
