@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - uses: crate-ci/typos@v1.46.0
+    - uses: crate-ci/typos@v1.47.0
 
   generate-matrix:
     # https://stackoverflow.com/questions/59977364
@@ -74,7 +74,7 @@ jobs:
 
     - name: tmate debug
       if: ${{ !cancelled() && runner.debug }}
-      uses: mxschmitt/action-tmate@v3.23
+      uses: mxschmitt/action-tmate@v3.24
 
     - name: annotate errors
       if: failure() || cancelled()
