@@ -102,6 +102,30 @@ int main (void)
     ok (rc > 0, "very long log message gets written (len = %d)", rc);
     ok (testbuf[rc - 1] == '+', "very long log message is truncated");
 
+    /*  Control characters embedded in a message are neutralized so an
+     *   attacker-influenced argument cannot forge log lines or inject
+     *   terminal escape sequences (see log_sanitize()).
+     */
+    reset_logbuf ();
+    imp_say ("mechanism=%s unknown", "munge\ndevice: allow /dev/mem");
+    is (testbuf, "Notice: mechanism=munge?device: allow /dev/mem unknown",
+        "embedded newline is replaced with '?'");
+
+    reset_logbuf ();
+    imp_say ("boot\033[2Jsequence");
+    is (testbuf, "Notice: boot?[2Jsequence",
+        "embedded ESC is replaced with '?'");
+
+    reset_logbuf ();
+    imp_say ("trailing newline\n");
+    is (testbuf, "Notice: trailing newline",
+        "trailing newline is stripped");
+
+    reset_logbuf ();
+    imp_say ("tab\tseparated");
+    is (testbuf, "Notice: tab\tseparated",
+        "tab is preserved");
+
     /*  Remove logging provider */
     rc = imp_log_remove ("test");
     ok (rc == 0, "imp_log_remove: works");

@@ -171,6 +171,29 @@ int imp_log_set_level (const char *name, int level)
 /*
  *   Logging interface functions
  */
+
+/* Neutralize control characters in a fully-formatted log message before it
+ * is handed to any output backend. Without this, an embedded newline could
+ * forge a second log line and an ESC byte could inject a terminal escape
+ * sequence into an administrator's view of the IMP's stderr/journal.
+ */
+static void log_sanitize (char *s)
+{
+    size_t len = strlen (s);
+    /*  Drop trailing newline(s): every output backend supplies its own.
+     */
+    while (len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r'))
+        s[--len] = '\0';
+
+    /*  Remove other escape characters (except tab)
+     */
+    for (size_t i = 0; i < len; i++) {
+        unsigned char c = (unsigned char) s[i];
+        if (c != '\t' && (c < 0x20 || c == 0x7f))
+            s[i] = '?';
+    }
+}
+
 static void vlog_msg (int level, const char *format, va_list ap,
                       hash_t outputs)
 {
@@ -193,6 +216,8 @@ static void vlog_msg (int level, const char *format, va_list ap,
         q += strlen (suffix);
         *q = '\0';
     }
+
+    log_sanitize (buf);
 
     arg.msg = buf;
     hash_for_each (outputs, (hash_arg_f) log_output_call, (void *) &arg);
