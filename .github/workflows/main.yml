@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
-    - uses: crate-ci/typos@v1.50.0
+    - uses: crate-ci/typos@v1.50.3
 
   generate-matrix:
     # https://stackoverflow.com/questions/59977364
