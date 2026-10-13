@@ -320,6 +320,43 @@ test_expect_success SUDO 'flux-imp exec works under sudo' '
 	id -u > id-sudo.expected &&
         test_cmp id-sudo.expected id-sudo.out
 '
+test_expect_success 'flux-imp exec sets FLUX_IMP_EXEC_USERID' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml &&
+	  fake_imp_input foo | \
+	    $flux_imp exec $(pwd)/printenv.sh arg >userid.out
+	) &&
+	grep "^FLUX_IMP_EXEC_USERID=$(id -u)$" userid.out
+'
+test_expect_success 'flux-imp exec overwrites inherited FLUX_IMP_EXEC_USERID' '
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none.toml &&
+	  export FLUX_IMP_EXEC_USERID=0 &&
+	  fake_imp_input foo | \
+	    $flux_imp exec $(pwd)/printenv.sh arg >userid-forged.out
+	) &&
+	test_debug "grep FLUX_IMP_EXEC_USERID userid-forged.out" &&
+	grep "^FLUX_IMP_EXEC_USERID=$(id -u)$" userid-forged.out &&
+	test_expect_code 1 grep "^FLUX_IMP_EXEC_USERID=0$" userid-forged.out
+'
+#  The environment allowlist drops an inherited FLUX_IMP_EXEC_USERID on
+#  its own, so name the variable in allowed-environment to ensure it
+#  survives the rebuild. This is what the IMP must overwrite.
+test_expect_success 'flux-imp exec overwrites allowed FLUX_IMP_EXEC_USERID' '
+	sed "s|allow-unprivileged-exec = true|&\\
+	allowed-environment = [ \"FLUX_IMP_EXEC_USERID\" ]|" \
+	    sign-none.toml >sign-none-uid.toml &&
+	( export FLUX_IMP_CONFIG_PATTERN=sign-none-uid.toml &&
+	  export FLUX_IMP_EXEC_USERID=0 &&
+	  fake_imp_input foo | \
+	    $flux_imp exec $(pwd)/printenv.sh arg >userid-allowed.out
+	) &&
+	test_debug "grep FLUX_IMP_EXEC_USERID userid-allowed.out" &&
+	grep "^FLUX_IMP_EXEC_USERID=$(id -u)$" userid-allowed.out &&
+	test_expect_code 1 grep "^FLUX_IMP_EXEC_USERID=0$" userid-allowed.out
+'
+test_expect_success SUDO 'flux-imp exec sets FLUX_IMP_EXEC_USERID under sudo' '
+	imp_exec_sign_none $(pwd)/printenv.sh arg >userid-sudo.out &&
+	grep "^FLUX_IMP_EXEC_USERID=$(id -u)$" userid-sudo.out
+'
 test_expect_success SUDO 'flux-imp exec passes more than one argument to shell' '
 	imp_exec_sign_none id --zero --user >id-sudo2.out &&
 	test_debug "echo expecting uid=$(id -u), got $(cat -v id-sudo2.out)" &&
