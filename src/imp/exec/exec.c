@@ -24,6 +24,10 @@
  *  a default PATH plus an allowlist: a minimal set required by the job
  *  shell, extended by the exec.allowed-environment configuration key.
  *  PATH may be overridden by naming it in allowed-environment.
+ *
+ * Environment variables set by IMP:
+ *  - FLUX_IMP_EXEC_USERID - uid of the user running the IMP, i.e. the
+ *    owner of the enclosing instance
  */
 
 #if HAVE_CONFIG_H
@@ -319,10 +323,29 @@ static void imp_exec_setup_environment (struct imp_exec *exec)
 static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)
 {
     char **argv;
+    char buf[16];
     int exit_code;
 
     /* Setup minimal environment */
     imp_exec_setup_environment (exec);
+
+    /*  Tell the job shell the uid that invoked the IMP, i.e. the owner of
+     *   the enclosing instance. The shell cannot trust the instance for
+     *   this, since the instance may be running as a different user, but
+     *   this value is taken from getuid() in the privileged IMP process
+     *   and the unprivileged process has no way to influence it.
+     *
+     *  N.B. this is set after imp_exec_setup_environment() so that it is
+     *   not dropped by the rebuild, and with overwrite=1 so that a value
+     *   named in allowed-environment cannot mask it.
+     */
+    if (snprintf (buf,
+                  sizeof (buf),
+                  "%ju",
+                  (uintmax_t) exec->imp_pwd->pw_uid) >= (int) sizeof (buf))
+        imp_die (1, "exec: FLUX_IMP_EXEC_USERID too large");
+    if (setenv ("FLUX_IMP_EXEC_USERID", buf, 1) < 0)
+        imp_die (1, "exec: failed to set FLUX_IMP_EXEC_USERID");
 
     /* Move to "safe" path (XXX: user's home directory?) */
     if (chdir ("/") < 0)
