@@ -60,6 +60,12 @@ exec /bin/sleep "\$@"
 EOF
 chmod +x sleeper.sh
 
+cat <<EOF >printenv.sh
+#!/bin/sh
+exec /usr/bin/env
+EOF
+chmod +x printenv.sh
+
 test_expect_success 'create config allowing current user to exec imp' '
 	cat <<-EOF >imp-test.toml
 	allow-sudo = true
@@ -123,9 +129,13 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	allowed-types = [ "none" ]
 	[exec]
 	allowed-users = [ "$(whoami)" ]
-	allowed-shells = [ "id", "echo", "$(pwd)/sleeper.sh" ]
+	allowed-shells = [ "id", "echo", "$(pwd)/sleeper.sh",
+	                   "$(pwd)/printenv.sh" ]
 	allow-unprivileged-exec = true
 	EOF
+	sed "s|allow-unprivileged-exec = true|&\\
+	allowed-environment = [ \"SITE_VAR\", \"SITE_GLOB_*\" ]|" \
+	    sign-none.toml >sign-none-env.toml &&
 	cat <<-EOF >sign-none-allowed-munge.toml &&
 	allow-sudo = true
 	[sign]
@@ -224,6 +234,80 @@ test_expect_success 'flux-imp exec: shell must be in allowed users' '
 	    test_must_fail $flux_imp exec echo good >nousers.log 2>&1
 	) &&
 	grep -i "not in allowed-users list" nousers.log
+'
+#  The IMP inherits its environment from the unprivileged instance owner
+#  and passes it to a job shell running as a different user. Only the
+#  allowlist should survive.
+imp_exec_printenv() {
+	toml=$1 && shift &&
+	fake_input_sign_none | \
+	  env FLUX_IMP_CONFIG_PATTERN=$toml "$@" \
+	    $flux_imp exec $(pwd)/printenv.sh arg
+}
+test_expect_success 'flux-imp exec passes required environment to shell' '
+	imp_exec_printenv sign-none.toml \
+	    FLUX_URI=local:///test/uri \
+	    FLUX_KVS_NAMESPACE=job-1234 \
+	    FLUX_EXEC_CONSTRAINED_RESOURCES=1 >env-ok.out &&
+	grep "^FLUX_URI=local:///test/uri$" env-ok.out &&
+	grep "^FLUX_KVS_NAMESPACE=job-1234$" env-ok.out &&
+	grep "^FLUX_EXEC_CONSTRAINED_RESOURCES=1$" env-ok.out
+'
+test_expect_success 'flux-imp exec sets a default PATH' '
+	imp_exec_printenv sign-none.toml PATH=/evil >env-path.out &&
+	grep "^PATH=/usr/sbin:/usr/bin:/sbin:/bin$" env-path.out
+'
+#  A side installation may need its own PATH, so the default is set
+#  before the allowlist is applied and PATH may be named there.
+test_expect_success 'flux-imp exec allows PATH in allowed-environment' '
+	sed "s|allow-unprivileged-exec = true|&\\
+	allowed-environment = [ \"PATH\" ]|" \
+	    sign-none.toml >sign-none-path.toml &&
+	imp_exec_printenv sign-none-path.toml \
+	    PATH=/opt/flux/bin:/usr/bin >env-path-ok.out &&
+	grep "^PATH=/opt/flux/bin:/usr/bin$" env-path-ok.out
+'
+test_expect_success 'flux-imp exec does not leak environment to shell' '
+	imp_exec_printenv sign-none.toml \
+	    FLUX_CONNECTOR_PATH=/evil \
+	    FLUX_MODULE_PATH=/evil \
+	    FLUX_EXEC_PATH_PREPEND=/evil \
+	    FLUX_PYTHONPATH_PREPEND=/evil \
+	    FLUX_LUA_PATH_PREPEND=/evil \
+	    OTHER_VAR=leaked >env-scrub.out &&
+	test_debug "cat env-scrub.out" &&
+	test_expect_code 1 grep "^FLUX_CONNECTOR_PATH=" env-scrub.out &&
+	test_expect_code 1 grep "^FLUX_MODULE_PATH=" env-scrub.out &&
+	test_expect_code 1 grep "_PREPEND=" env-scrub.out &&
+	test_expect_code 1 grep "^OTHER_VAR=" env-scrub.out
+'
+test_expect_success 'flux-imp exec extends environment with allowed-environment' '
+	imp_exec_printenv sign-none-env.toml \
+	    SITE_VAR=good \
+	    SITE_GLOB_ONE=good \
+	    SITE_VAR_BAD=bad \
+	    OTHER_VAR=bad >env-ext.out &&
+	test_debug "cat env-ext.out" &&
+	grep "^SITE_VAR=good$" env-ext.out &&
+	grep "^SITE_GLOB_ONE=good$" env-ext.out &&
+	test_expect_code 1 grep "^SITE_VAR_BAD=" env-ext.out &&
+	test_expect_code 1 grep "^OTHER_VAR=" env-ext.out
+'
+#  N.B. the variables under test are set with env(1) inside the sudo
+#  command rather than as sudo VAR=val arguments, so that they reach the
+#  IMP regardless of the env_reset and env_delete settings in sudoers.
+#  Otherwise sudo may strip them and the test would pass vacuously.
+test_expect_success SUDO 'flux-imp exec does not leak environment under sudo' '
+	fake_input_sign_none | \
+	  $SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+	    env FLUX_URI=local:///test/uri \
+	        FLUX_CONNECTOR_PATH=/evil \
+	        OTHER_VAR=leaked \
+	      $flux_imp exec $(pwd)/printenv.sh arg >env-sudo.out &&
+	test_debug "cat env-sudo.out" &&
+	grep "^FLUX_URI=local:///test/uri$" env-sudo.out &&
+	test_expect_code 1 grep "^FLUX_CONNECTOR_PATH=" env-sudo.out &&
+	test_expect_code 1 grep "^OTHER_VAR=" env-sudo.out
 '
 test_expect_success SUDO 'flux-imp exec: user must be in allowed-shells' '
 	test_must_fail imp_exec_sign_none printf good >badshell.log 2>&1 &&
