@@ -31,6 +31,12 @@
  *  - HOME
  *  - USER
  *
+ *  Environment variables passed through by default, in addition to any
+ *   matched by allowed-environment:
+ *  - FLUX_JOB_ID
+ *  - FLUX_JOB_USERID
+ *  - FLUX_JOB_RANKS
+ *
  *  - switch uid and gid to effective uid gid
  *
  *  - wait for child to terminate successfully
@@ -114,7 +120,8 @@ static bool run_env_var_allowed (const cf_t *allowed_env,
                                  const char *name)
 {
     if (strcmp (name, "FLUX_JOB_ID") == 0
-        || strcmp (name, "FLUX_JOB_USERID") == 0)
+        || strcmp (name, "FLUX_JOB_USERID") == 0
+        || strcmp (name, "FLUX_JOB_RANKS") == 0)
         return true;
     return cf_array_contains_match (allowed_env, name);
 }
