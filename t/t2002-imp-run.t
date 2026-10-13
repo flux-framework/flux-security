@@ -153,12 +153,14 @@ test_expect_success 'flux-imp run filters environment' '
 	test_expect_code 1 grep ^FOO=bar run-test-env.out &&
 	test_expect_code 1 grep ^EXACT_MATCH_BAD run-test-env.out
 '
-test_expect_success 'flux-imp run allows FLUX_JOB_ID and FLUX_JOB_USERID' '
+test_expect_success 'flux-imp run allows default job environment' '
 	FLUX_JOB_ID=1234 \
 	FLUX_JOB_USERID=$(id -u) \
+	FLUX_JOB_RANKS=0-3 \
 	    $flux_imp run test >run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_ID=1234 run-test-uid-jobid.out &&
-	grep ^FLUX_JOB_USERID=$(id -u) run-test-uid-jobid.out
+	grep ^FLUX_JOB_USERID=$(id -u) run-test-uid-jobid.out &&
+	grep ^FLUX_JOB_RANKS=0-3 run-test-uid-jobid.out
 '
 test_expect_success SUDO 'flux-imp run filters environment under sudo' '
 	$SUDO -E TEST_VAR=foo -E FOO=bar \
@@ -166,11 +168,13 @@ test_expect_success SUDO 'flux-imp run filters environment under sudo' '
 	grep ^TEST_VAR=foo sudo-run-test-env.out &&
 	test_expect_code 1 grep ^FOO=bar sudo-run-test-env.out
 '
-test_expect_success SUDO 'flux-imp run allows FLUX_JOB_ID and FLUX_JOB_USERID' '
+test_expect_success SUDO 'flux-imp run allows default job environment' '
 	$SUDO -E FLUX_JOB_ID=1234 -E FLUX_JOB_USERID=$(id -u) \
+	      -E FLUX_JOB_RANKS=0-3 \
 	    $flux_imp run test >sudo-run-test-uid-jobid.out &&
 	grep ^FLUX_JOB_ID=1234 sudo-run-test-uid-jobid.out &&
-	grep ^FLUX_JOB_USERID=$(id -u) sudo-run-test-uid-jobid.out
+	grep ^FLUX_JOB_USERID=$(id -u) sudo-run-test-uid-jobid.out &&
+	grep ^FLUX_JOB_RANKS=0-3 sudo-run-test-uid-jobid.out
 '
 
 wait_for_file() {
