@@ -1,3 +1,15 @@
+flux-security version 0.16.0 - 2026-10-15
+-----------------------------------------
+
+## Features
+ * imp: tell job shell userid of enclosing instance (#240)
+ * imp: exec: restrict job shell environment with an allowlist (#238)
+ * imp: export `FLUX_JOB_RANKS` by default in `flux-imp run` (#239)
+ * imp: sanitize log messages (#234)
+
+## Build/Test/Cleanup
+ * github: bump github-actions versions (#233, #235, #236, #237)
+
 flux-security version 0.15.0 - 2026-05-05
 -----------------------------------------
 
