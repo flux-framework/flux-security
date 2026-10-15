@@ -88,10 +88,25 @@ run.<name>.allowed-users
    An array of users allowed to invoke command ``<name>``.
 
 run.<name>.allowed-environment
-   An array of environment variables or :linux:man7:`glob` patters of
+   An array of environment variables or :linux:man7:`glob` patterns of
    environment variables which will be passed through to the executed
-   command. By default, only ``FLUX_JOB_ID`` and ``FLUX_JOB_USERID``
-   will be passed to the executed command.
+   command. By default, only ``FLUX_JOB_ID``, ``FLUX_JOB_USERID``, and
+   ``FLUX_JOB_RANKS`` will be passed to the executed command.
+
+   The defaults are sufficient for the prolog, epilog, and housekeeping
+   commands provided with Flux, so this key should normally be left unset.
+   Set it only when a site command requires an additional variable, and
+   name that variable explicitly.
+
+   .. warning::
+      Every variable allowed here is supplied by an unprivileged process
+      and is placed in the environment of a command that runs as root.
+      Avoid glob patterns.  A pattern such as ``FLUX_*`` matches variables
+      that alter the behavior of :core:man1:`flux` itself, such as
+      :envvar:`FLUX_URI` and :envvar:`FLUX_EXEC_PATH_PREPEND`, and allows
+      an unprivileged instance owner to redirect what the root command
+      runs.  Patterns are matched with :linux:man3:`fnmatch` with no
+      flags, so ``*`` also matches characters such as ``/`` and ``=``.
 
 The following top-level keys are also supported:
 
@@ -115,12 +130,10 @@ EXAMPLE
    allowed-shells = [ "/usr/libexec/flux/flux-shell" ]
 
    [run.prolog]
-   allowed-environment = [ "FLUX_*" ]
    allowed-users = [ "flux" ]
    path = "/etc/flux/system/prolog"
 
    [run.epilog]
-   allowed-environment = [ "FLUX_*" ]
    allowed-users = [ "flux" ]
    path = "/etc/flux/system/epilog"
 
