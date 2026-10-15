@@ -19,6 +19,11 @@
  *
  * If FLUX_IMP_EXEC_HELPER is set, then execute the value of this
  *  variable and read input from there.
+ *
+ * The environment of the job shell is not inherited. It is built from
+ *  a default PATH plus an allowlist: a minimal set required by the job
+ *  shell, extended by the exec.allowed-environment configuration key.
+ *  PATH may be overridden by naming it in allowed-environment.
  */
 
 #if HAVE_CONFIG_H
@@ -27,6 +32,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
@@ -35,6 +41,7 @@
 #include <sys/wait.h>
 #include <jansson.h>
 
+#include "src/libutil/macros.h"
 #include "src/libutil/kv.h"
 #include "src/libutil/sd_notify.h"
 #include "src/lib/context.h"
@@ -71,6 +78,8 @@ struct imp_exec {
     int specsz;
     struct device_allow *da;
 };
+
+extern char **environ;
 
 extern const char *imp_get_security_config_pattern (void);
 extern int imp_get_security_flags (void);
@@ -220,12 +229,100 @@ static void imp_exec_init_stream (struct imp_exec *exec, FILE *fp)
                  strerror (errno));
 }
 
+/*  Environment variables always passed through to the job shell.
+ *
+ *  These are required by the job shell itself: it exits with an error
+ *   without FLUX_URI and FLUX_KVS_NAMESPACE, and reads
+ *   FLUX_EXEC_CONSTRAINED_RESOURCES to learn whether the enclosing
+ *   instance applied resource constraints.
+ *
+ *  N.B. these values come from the unprivileged instance, so they are
+ *   not trustworthy, merely required. The allowlist bounds what the
+ *   instance owner can place in the environment of a shell running as
+ *   another user; it does not make these particular values trusted.
+ */
+static const char *exec_env_default[] = {
+    "FLUX_URI",
+    "FLUX_KVS_NAMESPACE",
+    "FLUX_EXEC_CONSTRAINED_RESOURCES",
+};
+
+static bool exec_env_var_allowed (const cf_t *allowed_env, const char *name)
+{
+    for (size_t i = 0; i < ARRAY_SIZE (exec_env_default); i++) {
+        if (strcmp (name, exec_env_default[i]) == 0)
+            return true;
+    }
+    return cf_array_contains_match (allowed_env, name);
+}
+
+/*  Replace the inherited environment with one built from the allowlist.
+ *
+ *  The IMP inherits its environment from the unprivileged instance owner
+ *   and passes it to a job shell that runs as a different user. Variables
+ *   such as FLUX_CONNECTOR_PATH, which is used as the search path for a
+ *   dlopen(3) in the shell, would otherwise let the instance owner run
+ *   arbitrary code as the job user.
+ */
+static void imp_exec_setup_environment (struct imp_exec *exec)
+{
+    const cf_t *allowed_env = cf_get_in (exec->conf, "allowed-environment");
+    struct kv *kv_env;
+    char **env;
+    char **envp;
+
+    if (!(kv_env = kv_create ()))
+        imp_die (1, "exec: failed to create environment");
+
+    /*  Set a default PATH, which is also the search path used by
+     *   execvp(3) below. This is set before the allowlist is applied so
+     *   that a site may override it, e.g. for a side installation, by
+     *   naming PATH in allowed-environment.
+     *
+     *  N.B. flux-imp run deliberately does not allow this: the command
+     *   it executes runs as root, while the job shell started here runs
+     *   as the job user.
+     */
+    if (kv_put (kv_env,
+                "PATH",
+                KV_STRING,
+                "/usr/sbin:/usr/bin:/sbin:/bin") < 0)
+        imp_die (1, "exec: failed to put default PATH in environment");
+
+    for (envp = environ; *envp != NULL; envp++) {
+        char name[129];
+        char *p;
+        size_t namelen;
+
+        if (!(p = strchr (*envp, '=')))
+            continue;
+
+        /*  Skip environment variables with excessively long names
+         */
+        if ((namelen = p - *envp) >= sizeof (name))
+            continue;
+        memcpy (name, *envp, namelen);
+        name[namelen] = '\0';
+
+        if (exec_env_var_allowed (allowed_env, name)
+            && kv_put (kv_env, name, KV_STRING, p+1) < 0)
+            imp_die (1, "exec: failed to set %s in environment", name);
+    }
+
+    if (kv_expand_environ (kv_env, &env) < 0)
+        imp_die (1, "exec: failed to expand environment");
+
+    environ = env;
+    kv_destroy (kv_env);
+}
+
 static void __attribute__((noreturn)) imp_exec (struct imp_exec *exec)
 {
     char **argv;
     int exit_code;
 
     /* Setup minimal environment */
+    imp_exec_setup_environment (exec);
 
     /* Move to "safe" path (XXX: user's home directory?) */
     if (chdir ("/") < 0)

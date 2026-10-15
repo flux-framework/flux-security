@@ -55,6 +55,39 @@ exec.allow-unprivileged-exec
    to execute arbitrary commands as the Flux system instance owner userid
    (e.g. ``flux``)
 
+exec.allowed-environment
+   An array of environment variables or :linux:man7:`glob` patterns of
+   environment variables which will be passed through to the job shell,
+   in addition to the defaults described below.
+
+   The job shell does not inherit the environment of the IMP. Instead,
+   the environment is built from an allowlist consisting of ``PATH``,
+   set to ``/usr/sbin:/usr/bin:/sbin:/bin``, and the variables required
+   by the job shell itself: ``FLUX_URI``, ``FLUX_KVS_NAMESPACE``, and
+   ``FLUX_EXEC_CONSTRAINED_RESOURCES``.
+
+   These defaults are sufficient for the job shell provided with Flux,
+   so this key should normally be left unset. Set it only when a site
+   shell plugin requires an additional variable, and name that variable
+   explicitly.
+
+   ``PATH`` is set before the allowlist is applied, so a site that needs
+   a different search path, for example a side installation of Flux, may
+   override the default by naming ``PATH`` here.  Note that a pattern
+   broad enough to match ``PATH`` has the same effect.
+
+   .. warning::
+      The IMP inherits its environment from the unprivileged instance
+      owner and passes it to a job shell that runs as a different user.
+      Avoid glob patterns.  A pattern such as ``FLUX_*`` would restore
+      variables such as :envvar:`FLUX_CONNECTOR_PATH`, which is used as
+      the search path for a :linux:man3:`dlopen` in the job shell, and
+      the ``FLUX_*_PREPEND`` variables, which alter where
+      :core:man1:`flux` finds commands and modules.  Either lets the
+      instance owner run arbitrary code as the job user.  Patterns are
+      matched with :linux:man3:`fnmatch` with no flags, so ``*`` also
+      matches characters such as ``/`` and ``=``.
+
 exec.pam-support
    A boolean value which, if true, enables PAM support for the IMP exec
    subcommand, allowing a ``flux`` PAM stack to be executed for multi

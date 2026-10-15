@@ -30,11 +30,23 @@ RUN case $BASE_IMAGE in \
      *) (>&2 echo "Unknown BASE_IMAGE") ;; \
     esac
 
+ARG PAM_WRAPPER_VERSION=1.1.4
+ARG PAM_WRAPPER_URLS="\
+https://ftp.samba.org/pub/cwrap/pam_wrapper-${PAM_WRAPPER_VERSION}.tar.gz \
+https://gitlab.com/cwrap/pam_wrapper/-/archive/pam_wrapper-${PAM_WRAPPER_VERSION}/pam_wrapper-pam_wrapper-${PAM_WRAPPER_VERSION}.tar.gz"
+
 RUN cd /tmp \
  && mkdir pam_wrapper \
  && cd pam_wrapper \
- && wget -O - https://ftp.samba.org/pub/cwrap/pam_wrapper-1.1.4.tar.gz \
-     | tar xvz --strip-components 1 \
+ && for i in 1 2 3; do \
+        for url in $PAM_WRAPPER_URLS; do \
+            wget -O pam_wrapper.tar.gz "$url" && break 2; \
+            rm -f pam_wrapper.tar.gz; \
+        done; \
+        sleep 10; \
+    done \
+ && test -s pam_wrapper.tar.gz \
+ && tar xvzf pam_wrapper.tar.gz --strip-components 1 \
  && mkdir obj \
  && cd obj \
  && cmake -DCMAKE_INSTALL_PREFIX=/usr -DLIB_SUFFIX=64 .. \
