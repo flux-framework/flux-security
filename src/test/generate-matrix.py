@@ -98,6 +98,7 @@ matrix.add_build(name="bookworm", pam=False)
 matrix.add_build(
     name="bookworm - 32 bit",
     platform="linux/386",
+    env=dict(DOCKER_RUN_EXTRA_ARGS="--security-opt seccomp=unconfined")
 )
 
 # Debian: gcc-8, content-s3, distcheck
