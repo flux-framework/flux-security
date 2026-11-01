@@ -160,6 +160,7 @@ export chain_lint
 
 if [[ "$INSTALL_ONLY" == "t" ]]; then
     docker run --rm \
+	${DOCKER_RUN_EXTRA_ARGS} \
         --workdir=$WORKDIR \
         --volume=$TOP:$WORKDIR \
         ${PLATFORM} \
@@ -175,6 +176,7 @@ if [[ "$INSTALL_ONLY" == "t" ]]; then
     || (docker rm tmp.$$; die "docker run of 'make install' failed")
 else
     docker run --rm \
+	${DOCKER_RUN_EXTRA_ARGS} \
         --workdir=$WORKDIR \
         --volume=$TOP:$WORKDIR \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
@@ -227,6 +229,7 @@ if test -n "$TAG"; then
     # Re-run 'make install' in fresh image, otherwise we get all
     # the context from the build above
     docker run --name=tmp.$$ \
+	${DOCKER_RUN_EXTRA_ARGS} \
         --workdir=${WORKDIR}/${BUILD_DIR} \
         --volume=$TOP:${WORKDIR} \
         --user="root" \
