@@ -132,7 +132,17 @@ void imp_setup_signal_forwarding (struct imp_state *imp)
 
 void imp_raise (int sig)
 {
+    sigset_t mask;
+
     signal (sig, SIG_DFL);
+
+    /*  sig may be blocked by imp_setup_signal_forwarding(), in which case
+     *  raise(3) would leave it pending and pause(2) would never return.
+     */
+    sigemptyset (&mask);
+    sigaddset (&mask, sig);
+    (void) sigprocmask (SIG_UNBLOCK, &mask, NULL);
+
     if (raise (sig) == 0)
         pause ();
     /*  If we get here, either raise(3) failed or for some reason signal
