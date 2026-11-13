@@ -219,7 +219,10 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
         return -1;
     while (fscanf (fp, "%lu", &child) == 1) {
         pid_t pid = child;
-        if (pid == current_pid)
+        /* Never pass pid <= 0 to kill(2), which would signal a process
+         * group or every process on the system.
+         */
+        if (pid <= 0 || pid == current_pid)
             continue;
         if (kill (pid, sig) < 0) {
             saved_errno = errno;
