@@ -33,8 +33,9 @@ void imp_sigunblock_forwarded (void);
 
 /*  Wait up to timeout seconds (forever if timeout < 0) for a forwarded
  *  signal or SIGCHLD. Must be called after imp_setup_signal_forwarding().
- *  Returns 0 on timeout, or -1 with errno set to EINTR if interrupted by
- *  a signal.
+ *  If SIGUSR1 was received, send SIGKILL to all processes in the job's
+ *  container before returning. Returns 0 on timeout, or -1 with errno set
+ *  to EINTR if interrupted by a signal.
  */
 int imp_signal_wait (double timeout);
 

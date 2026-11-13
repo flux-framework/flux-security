@@ -21,6 +21,8 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
+#include "src/libutil/macros.h"
+
 #include "signals.h"
 #include "pidinfo.h"
 #include "imp_log.h"
@@ -31,6 +33,7 @@ void __gcov_dump (void);
 
 static const struct imp_state *imp_state = NULL;
 static volatile sig_atomic_t imp_child = -1;
+static volatile sig_atomic_t kill_pending = 0;
 
 /* Signal mask used while waiting in imp_signal_wait(). Forwarded signals
  * and SIGCHLD are only unblocked while waiting, so signal handlers never
@@ -81,30 +84,37 @@ void imp_sigunblock_all (void)
     reset_ignored_signals ();
 }
 
+static void kill_container (void)
+{
+    int count = -1;
+
+    /* RFC 15 specifies that SIGUSR1 is a surrogate for SIGKILL, and
+     * that the IMP SHALL deliver the signal to all processes in the
+     * job's container (using cgroup.procs if able).
+     */
+    if (imp_state->cgroup->use_cgroup_kill)
+        count = cgroup_kill (imp_state->cgroup, SIGKILL);
+
+    /* If cgroup wasn't used or fails, try with pid_kill_children
+     */
+    if (count < 0)
+        count = pid_kill_children (getpid (), SIGKILL);
+
+    /* O/w, log an error, not much more to do
+     */
+    if (count < 0)
+        imp_warn ("Failed to forward SIGKILL: %s", strerror (errno));
+}
+
+/* Only async-signal-safe functions may be called here, so SIGUSR1 is
+ * handled by imp_signal_wait() after the handler returns.
+ */
 static void fwd_signal (int signum)
 {
-    if (signum == SIGUSR1) {
-        int count = -1;
-
-        /* RFC 15 specifies that SIGUSR1 is a surrogate for SIGKILL, and
-         * that the IMP SHALL deliver the signal to all processes in the
-         * job's container (using cgroup.procs if able).
-         */
-        if (imp_state->cgroup->use_cgroup_kill)
-            count = cgroup_kill (imp_state->cgroup, SIGKILL);
-
-        /* If cgroup wasn't used or fails, try with pid_kill_children
-         */
-        if (count < 0)
-            count = pid_kill_children (getpid (), SIGKILL);
-
-        /* O/w, log an error, not much more to do
-         */
-        if (count < 0)
-            imp_warn ("Failed to forward SIGKILL: %s", strerror (errno));
-    }
+    if (signum == SIGUSR1)
+        kill_pending = 1;
     else if (imp_child != -1)
-        kill (imp_child, signum);
+        ERRNO_SAFE_WRAP (kill, imp_child, signum);
 }
 
 static void sigchld_handler (int signum __attribute__ ((unused)))
@@ -167,13 +177,21 @@ int imp_signal_wait (double timeout)
 {
     struct timespec ts;
     struct timespec *tsp = NULL;
+    int rc;
 
     if (timeout >= 0.) {
         ts.tv_sec = (time_t) timeout;
         ts.tv_nsec = (long) ((timeout - ts.tv_sec) * 1e9);
         tsp = &ts;
     }
-    return ppoll (NULL, 0, tsp, &wait_mask);
+    rc = ppoll (NULL, 0, tsp, &wait_mask);
+    if (kill_pending) {
+        int saved_errno = errno;
+        kill_pending = 0;
+        kill_container ();
+        errno = saved_errno;
+    }
+    return rc;
 }
 
 pid_t imp_waitpid (pid_t pid, int *status)
