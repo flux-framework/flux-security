@@ -43,6 +43,7 @@
 
 #include "cgroup.h"
 #include "pidset.h"
+#include "signals.h"
 #include "imp_log.h"
 
 static char *remove_leading_dotdot (char *relpath)
@@ -313,11 +314,11 @@ int cgroup_wait_for_empty (struct cgroup_info *cgroup)
         /*  Note: inotify/poll() do not work on the cgroup.procs virtual
          *  file. Therefore, wait at most 1s and check to see if the cgroup
          *  is empty again. If the job execution system requests a signal to
-         *  be delivered then the sleep will be interrupted, in which case a
+         *  be delivered then the wait will be interrupted, in which case a
          *  a small delay is added in hopes that any terminated processes
          *  will have been removed from cgroup.procs by then.
          */
-        if (usleep (1e6) < 0 && errno == EINTR)
+        if (imp_signal_wait (1.) < 0 && errno == EINTR)
             usleep (2000);
     }
     pidset_destroy (signaled);

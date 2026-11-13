@@ -438,12 +438,8 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     imp_setup_signal_forwarding (imp);
 
     /* Parent: wait for child to exit */
-    while (waitpid (child, &status, 0) != child) {
-        if (errno != EINTR)
-            imp_die (1, "waitpid: %s", strerror (errno));
-    }
-    /* Child pid may now be reused, so stop forwarding signals to it */
-    imp_set_signal_child (-1);
+    if (imp_waitpid (child, &status) != child)
+        imp_die (1, "waitpid: %s", strerror (errno));
 
     rc = sd_notify (0, "STOPPING=1");
     if (rc < 0)
@@ -471,9 +467,13 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
     sd_notify (0, "STATUS=cgroup is now empty, exiting");
 
 #if HAVE_PAM
-    /* Call privileged IMP plugins/containment finalization */
-    if (imp_supports_pam (exec))
+    /* Call privileged IMP plugins/containment finalization. Helpers run
+     * by PAM inherit the signal mask, so unblock forwarded signals first.
+     */
+    if (imp_supports_pam (exec)) {
+        imp_sigunblock_forwarded ();
         pam_finish ();
+    }
 #endif /* HAVE_PAM */
 
     /* Exit with status of the child process */

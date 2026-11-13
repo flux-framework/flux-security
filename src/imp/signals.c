@@ -16,6 +16,9 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
+#include <poll.h>
+#include <time.h>
+#include <sys/wait.h>
 #include <sys/prctl.h>
 
 #include "signals.h"
@@ -28,6 +31,12 @@ void __gcov_dump (void);
 
 static const struct imp_state *imp_state = NULL;
 static volatile sig_atomic_t imp_child = -1;
+
+/* Signal mask used while waiting in imp_signal_wait(). Forwarded signals
+ * and SIGCHLD are only unblocked while waiting, so signal handlers never
+ * interrupt other code.
+ */
+static sigset_t wait_mask;
 
 void imp_set_signal_child (pid_t child)
 {
@@ -98,10 +107,14 @@ static void fwd_signal (int signum)
         kill (imp_child, signum);
 }
 
+static void sigchld_handler (int signum __attribute__ ((unused)))
+{
+    /* Nothing to do. SIGCHLD only needs to interrupt imp_signal_wait() */
+}
+
 void imp_setup_signal_forwarding (struct imp_state *imp)
 {
     struct sigaction sa;
-    sigset_t mask;
     int i;
     int signals[] = {
         SIGTERM,
@@ -123,16 +136,61 @@ void imp_setup_signal_forwarding (struct imp_state *imp)
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
 
-    sigfillset (&mask);
+    sigfillset (&wait_mask);
     for (i = 0; i < nsignals; i++) {
-        sigdelset (&mask, signals[i]);
+        sigdelset (&wait_mask, signals[i]);
         if (sigaction(signals[i], &sa, NULL) < 0)
             imp_warn ("sigaction (signal=%d): %s",
                       signals[i],
                       strerror (errno));
     }
+
+    sa.sa_handler = sigchld_handler;
+    sigdelset (&wait_mask, SIGCHLD);
+    if (sigaction (SIGCHLD, &sa, NULL) < 0)
+        imp_warn ("sigaction (SIGCHLD): %s", strerror (errno));
+
+    /* Block all signals outside of imp_signal_wait() */
+    imp_sigblock_all ();
+}
+
+void imp_sigunblock_forwarded (void)
+{
+    sigset_t mask = wait_mask;
+
+    sigaddset (&mask, SIGCHLD);
     if (sigprocmask (SIG_SETMASK, &mask, NULL) < 0)
-       imp_die (1, "failed to block signals: %s", strerror (errno));
+        imp_die (1, "failed to unblock signals: %s", strerror (errno));
+}
+
+int imp_signal_wait (double timeout)
+{
+    struct timespec ts;
+    struct timespec *tsp = NULL;
+
+    if (timeout >= 0.) {
+        ts.tv_sec = (time_t) timeout;
+        ts.tv_nsec = (long) ((timeout - ts.tv_sec) * 1e9);
+        tsp = &ts;
+    }
+    return ppoll (NULL, 0, tsp, &wait_mask);
+}
+
+pid_t imp_waitpid (pid_t pid, int *status)
+{
+    pid_t rc;
+
+    /* If the child exits after waitpid(2) returns 0, SIGCHLD remains
+     * pending and interrupts imp_signal_wait() immediately.
+     */
+    while ((rc = waitpid (pid, status, WNOHANG)) == 0) {
+        if (imp_signal_wait (-1.) < 0 && errno != EINTR)
+            return -1;
+    }
+    /* Child pid may now be reused, so stop forwarding signals to it */
+    if (rc == pid)
+        imp_set_signal_child (-1);
+    return rc;
 }
 
 void imp_raise (int sig)
