@@ -147,6 +147,7 @@ TESTS = \
 	test_impcmd.t \
 	test_passwd.t \
 	test_pidinfo.t \
+	test_pidset.t \
 	test_safe_popen.t \
 	test_device.t
 
@@ -200,6 +201,12 @@ test_pidinfo_t_SOURCES = \
 	imp_log.c \
 	imp_log.h
 test_pidinfo_t_LDADD = $(test_ldadd)
+
+test_pidset_t_SOURCES = \
+	test/pidset.c \
+	pidset.c \
+	pidset.h
+test_pidset_t_LDADD = $(test_ldadd)
 
 test_safe_popen_t_SOURCES = \
 	test/safe_popen.c \
