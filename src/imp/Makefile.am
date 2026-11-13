@@ -58,6 +58,8 @@ IMP_SOURCES = \
 	passwd.h \
 	pidinfo.c \
 	pidinfo.h \
+	pidset.c \
+	pidset.h \
 	signals.c \
 	signals.h \
 	cgroup.c \
