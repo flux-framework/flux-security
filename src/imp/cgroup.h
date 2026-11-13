@@ -27,7 +27,8 @@ void cgroup_info_destroy (struct cgroup_info *cgroup);
  */
 int cgroup_kill (struct cgroup_info *cgroup, int sig);
 
-/*  Wait for all processes in cgroup (except this one) to exit.
+/*  Send SIGTERM and SIGCONT once to each process in cgroup (except this
+ *  one), and wait for all of them to exit.
  */
 int cgroup_wait_for_empty (struct cgroup_info *cgroup);
 

@@ -42,6 +42,7 @@
 #include "src/libutil/strlcpy.h"
 
 #include "cgroup.h"
+#include "pidset.h"
 #include "imp_log.h"
 
 static char *remove_leading_dotdot (char *relpath)
@@ -201,7 +202,24 @@ struct cgroup_info *cgroup_info_create (void)
     return cgroup;
 }
 
-int cgroup_kill (struct cgroup_info *cgroup, int sig)
+/*  Send signal to all pids (excluding the current pid) in the current
+ *  cgroup. If skip is non-NULL, pids in skip are not signaled, and each
+ *  signaled pid is added to skip. If a pid cannot be added to skip, warn
+ *  only once, tracked by *add_failed. If sigcont is true, also send
+ *  SIGCONT so that stopped processes can act on sig.
+ *
+ *  Returns the number of processes remaining in the cgroup, including
+ *  pids that were skipped because they were already signaled, or -1 on
+ *  error.
+ *
+ *  This is modeled after systemd's cg_kill() with a killed_pids set and
+ *  the CGROUP_SIGCONT flag.
+ */
+static int cgroup_kill_skip (struct cgroup_info *cgroup,
+                             int sig,
+                             struct pidset *skip,
+                             bool *add_failed,
+                             bool sigcont)
 {
     int count = 0;
     int rc = 0;
@@ -224,8 +242,15 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
          */
         if (pid <= 0 || pid == current_pid)
             continue;
+        if (skip && pidset_contains (skip, pid)) {
+            count++;
+            continue;
+        }
         if (kill (pid, sig) < 0) {
-            /* Process exited after cgroup.procs was read */
+            /* Process exited after cgroup.procs was read. Do not add pid
+             * to skip, since it may be reused by a new process in the
+             * cgroup.
+             */
             if (errno == ESRCH)
                 continue;
             saved_errno = errno;
@@ -233,9 +258,17 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
             imp_warn ("Failed to send signal %d to pid %lu",
                       sig,
                       child);
-            continue;
         }
-        count++;
+        else {
+            if (sigcont)
+                (void) kill (pid, SIGCONT);
+            count++;
+        }
+        /* Add pid even if kill(2) fails so that it is not retried */
+        if (skip && pidset_add (skip, pid) < 0 && !*add_failed) {
+            imp_warn ("Failed to track signaled pid %lu", child);
+            *add_failed = true;
+        }
     }
     fclose (fp);
     if (rc < 0 && count == 0) {
@@ -245,16 +278,38 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
     return count;
 }
 
+int cgroup_kill (struct cgroup_info *cgroup, int sig)
+{
+    return cgroup_kill_skip (cgroup, sig, NULL, NULL, false);
+}
+
 int cgroup_wait_for_empty (struct cgroup_info *cgroup)
 {
-    int n;
+    struct pidset *signaled;
+    bool add_failed = false;
 
     /*  Only wait for empty cgroup if cgroup kill is enabled.
      */
     if (!cgroup->use_cgroup_kill)
         return 0;
 
-    while ((n = cgroup_kill (cgroup, 0)) > 0) {
+    /*  If the pidset cannot be created, processes are still signaled,
+     *  but may receive SIGTERM more than once.
+     */
+    if (!(signaled = pidset_create ()))
+        imp_warn ("Failed to create set of signaled pids");
+
+    /*  Terminate processes remaining in the cgroup, as systemd does when
+     *  stopping a unit with KillMode=control-group. Each process is
+     *  signaled only once, but cgroup.procs is rescanned on each pass to
+     *  catch newly forked processes. The IMP does not escalate to SIGKILL.
+     *  Processes that ignore SIGTERM remain until the IMP receives SIGUSR1.
+     */
+    while (cgroup_kill_skip (cgroup,
+                             SIGTERM,
+                             signaled,
+                             &add_failed,
+                             true) > 0) {
         /*  Note: inotify/poll() do not work on the cgroup.procs virtual
          *  file. Therefore, wait at most 1s and check to see if the cgroup
          *  is empty again. If the job execution system requests a signal to
@@ -265,6 +320,7 @@ int cgroup_wait_for_empty (struct cgroup_info *cgroup)
         if (usleep (1e6) < 0 && errno == EINTR)
             usleep (2000);
     }
+    pidset_destroy (signaled);
     return 0;
 }
 
