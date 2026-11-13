@@ -442,6 +442,8 @@ int imp_exec_privileged (struct imp_state *imp, struct kv *kv)
         if (errno != EINTR)
             imp_die (1, "waitpid: %s", strerror (errno));
     }
+    /* Child pid may now be reused, so stop forwarding signals to it */
+    imp_set_signal_child (-1);
 
     rc = sd_notify (0, "STOPPING=1");
     if (rc < 0)
