@@ -138,7 +138,7 @@ void imp_raise (int sig)
     signal (sig, SIG_DFL);
 
     /*  sig may be blocked by imp_setup_signal_forwarding(), in which case
-     *  raise(3) would leave it pending and pause(2) would never return.
+     *  raise(3) would leave it pending.
      */
     sigemptyset (&mask);
     sigaddset (&mask, sig);
@@ -150,11 +150,11 @@ void imp_raise (int sig)
      */
     (void) prctl (PR_SET_DUMPABLE, 0);
 
-    if (raise (sig) == 0)
-        pause ();
-    /*  If we get here, either raise(3) failed or for some reason signal
-     *  failed to kill the IMP during pause(). Exit with standard 128+sig.
+    /*  Since sig is unblocked, it is delivered before raise(3) returns.
+     *  If we get here, either raise(3) failed or the default action of sig
+     *  does not terminate the process. Exit with standard 128+sig.
      */
+    (void) raise (sig);
     imp_die (128 + sig, "failed to raise signal %d", sig);
 }
 
