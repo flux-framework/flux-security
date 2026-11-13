@@ -225,6 +225,9 @@ int cgroup_kill (struct cgroup_info *cgroup, int sig)
         if (pid <= 0 || pid == current_pid)
             continue;
         if (kill (pid, sig) < 0) {
+            /* Process exited after cgroup.procs was read */
+            if (errno == ESRCH)
+                continue;
             saved_errno = errno;
             rc = -1;
             imp_warn ("Failed to send signal %d to pid %lu",
