@@ -66,6 +66,12 @@ exec /usr/bin/env
 EOF
 chmod +x printenv.sh
 
+cat <<'EOF' >selfkill.sh
+#!/bin/sh
+kill -$1 $$
+EOF
+chmod +x selfkill.sh
+
 test_expect_success 'create config allowing current user to exec imp' '
 	cat <<-EOF >imp-test.toml
 	allow-sudo = true
@@ -130,7 +136,8 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	[exec]
 	allowed-users = [ "$(whoami)" ]
 	allowed-shells = [ "id", "echo", "$(pwd)/sleeper.sh",
-	                   "$(pwd)/printenv.sh", "$(pwd)/linger.sh" ]
+	                   "$(pwd)/printenv.sh", "$(pwd)/linger.sh",
+	                   "$(pwd)/selfkill.sh" ]
 	allow-unprivileged-exec = true
 	EOF
 	sed "s|allow-unprivileged-exec = true|&\\
@@ -385,6 +392,13 @@ test_expect_success SUDO,NO_CHAIN_LINT 'flux-imp exec: SIGUSR1 sends SIGKILL' '
 	pid=$(cat sleeper.pid) &&
 	kill -USR1 $pid &&
 	test_expect_code 137 wait $imp_pid
+'
+#  SIGUSR2 is blocked in the IMP since it is not a forwarded signal
+test_expect_success SUDO 'flux-imp exec: exits when child killed by SIGUSR2' '
+	fake_input_sign_none >selfkill.in &&
+	test_expect_code 140 timeout 10 \
+		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+		$flux_imp exec $(pwd)/selfkill.sh USR2 <selfkill.in
 '
 # Notes about cgroup kill testing below:
 # - systemd-run is used as a convenient way to execute the IMP inside a
