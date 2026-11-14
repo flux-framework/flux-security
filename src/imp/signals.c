@@ -22,6 +22,10 @@
 #include "pidinfo.h"
 #include "imp_log.h"
 
+#if CODE_COVERAGE_ENABLED
+void __gcov_dump (void);
+#endif
+
 static const struct imp_state *imp_state = NULL;
 static volatile sig_atomic_t imp_child = -1;
 
@@ -143,6 +147,13 @@ void imp_raise (int sig)
     sigemptyset (&mask);
     sigaddset (&mask, sig);
     (void) sigprocmask (SIG_UNBLOCK, &mask, NULL);
+
+#if CODE_COVERAGE_ENABLED
+    /*  Coverage data is normally written at exit, which will not happen
+     *  if the IMP is terminated by sig, so write it now.
+     */
+    __gcov_dump ();
+#endif
 
     /*  sig is the signal that terminated the IMP's child (e.g. the job
      *  shell), so it may be chosen by an unprivileged user. Do not let it
