@@ -16,6 +16,7 @@
 
 /*  Set the target of IMP signal forwarding. `pid` may be less than -1,
  *  in which case the entire process group `-pid` will be signaled.
+ *  Set `pid` to -1 to disable forwarding, e.g. once the child is reaped.
  */
 void imp_set_signal_child (pid_t pid);
 

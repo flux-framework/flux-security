@@ -130,7 +130,7 @@ test_expect_success 'create configs for flux-imp exec and signer' '
 	[exec]
 	allowed-users = [ "$(whoami)" ]
 	allowed-shells = [ "id", "echo", "$(pwd)/sleeper.sh",
-	                   "$(pwd)/printenv.sh" ]
+	                   "$(pwd)/printenv.sh", "$(pwd)/linger.sh" ]
 	allow-unprivileged-exec = true
 	EOF
 	sed "s|allow-unprivileged-exec = true|&\\
@@ -473,6 +473,81 @@ test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITABLE \
 	sleep .5 &&
 	kill -USR1 $(cat sleeper.pid) &&
 	test_expect_code 143 wait $imp_pid &&
+	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
+'
+
+#  Usage: linger.sh term|ignore
+#  Leave a background process in the cgroup and exit. With "term", the
+#  process writes SIGTERM to linger.status and exits on SIGTERM. With
+#  "ignore", it ignores SIGTERM.
+cat <<EOF >linger.sh
+#!/bin/sh
+printf "\$PPID\n" >$(pwd)/imp.pid
+if test "\$1" = "ignore"; then
+	action=""
+else
+	action="echo SIGTERM >$(pwd)/linger.status; exit 0"
+fi
+sh -c "trap '\$action' TERM; echo \\\$\\\$ >$(pwd)/linger.pid; sleep 3600 & wait" \
+	</dev/null >/dev/null 2>&1 &
+i=0
+while ! test -s $(pwd)/linger.pid && test \$i -lt 100; do
+	sleep 0.1
+	i=\$((i+1))
+done
+EOF
+chmod +x linger.sh
+
+#  SIGKILL processes in the cgroup via the IMP if it is still running
+cleanup_linger() {
+	if test -n "$1" && kill -0 $1 2>/dev/null; then
+		$SUDO kill -USR1 $(cat imp.pid) &&
+		wait $1
+	fi
+	return 0
+}
+
+#  Wait up to $2 seconds for pid $1 to exit
+wait_for_exit() {
+	count=0 &&
+	while kill -0 $1 2>/dev/null; do
+	    sleep 0.1
+	    count=$((count+1))
+	    test $count -gt $(($2*10)) && return 1
+	done
+	return 0
+}
+
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITABLE \
+	'flux-imp exec: SIGTERM is sent to cgroup after shell exits' '
+	rm -f imp.pid linger.pid linger.status &&
+	fake_input_sign_none | \
+		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+			./run-in-cgroup.sh "$CGROUP_PATH" \
+				$flux_imp exec $(pwd)/linger.sh term &
+	imp_pid=$! &&
+	test_when_finished "cleanup_linger $imp_pid" &&
+	wait_for_file linger.pid &&
+	wait_for_exit $imp_pid 10 &&
+	wait $imp_pid &&
+	test_debug "cat linger.status" &&
+	test "$(cat linger.status)" = "SIGTERM" &&
+	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
+'
+test_expect_success SUDO,CGROUPFS,NO_CHAIN_LINT,CGROUP_WRITABLE \
+	'flux-imp exec: waits for process that ignores SIGTERM' '
+	rm -f imp.pid linger.pid linger.status &&
+	fake_input_sign_none | \
+		$SUDO FLUX_IMP_CONFIG_PATTERN=sign-none.toml \
+			./run-in-cgroup.sh "$CGROUP_PATH" \
+				$flux_imp exec $(pwd)/linger.sh ignore &
+	imp_pid=$! &&
+	test_when_finished "cleanup_linger $imp_pid" &&
+	wait_for_file linger.pid &&
+	test_must_fail wait_for_exit $imp_pid 2 &&
+	! test -f linger.status &&
+	$SUDO kill -USR1 $(cat imp.pid) &&
+	wait $imp_pid &&
 	test_must_be_empty ${CGROUP_PATH}/cgroup.procs
 '
 

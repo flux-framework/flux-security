@@ -22,7 +22,7 @@
 #include "imp_log.h"
 
 static const struct imp_state *imp_state = NULL;
-static pid_t imp_child = (pid_t) -1;
+static volatile sig_atomic_t imp_child = -1;
 
 void imp_set_signal_child (pid_t child)
 {
