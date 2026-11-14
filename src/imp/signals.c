@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/prctl.h>
 
 #include "signals.h"
 #include "pidinfo.h"
@@ -142,6 +143,12 @@ void imp_raise (int sig)
     sigemptyset (&mask);
     sigaddset (&mask, sig);
     (void) sigprocmask (SIG_UNBLOCK, &mask, NULL);
+
+    /*  sig is the signal that terminated the IMP's child (e.g. the job
+     *  shell), so it may be chosen by an unprivileged user. Do not let it
+     *  cause the privileged IMP to dump core.
+     */
+    (void) prctl (PR_SET_DUMPABLE, 0);
 
     if (raise (sig) == 0)
         pause ();
