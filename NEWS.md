@@ -1,3 +1,16 @@
+flux-security version 0.17.0 - 2026-11-15
+-----------------------------------------
+
+## Features
+ * imp: send SIGTERM to cgroup after child termination (#244)
+
+## Fixes
+ * imp: harden signal handling (#245)
+
+### Build/Test/Cleanup
+ * github: bump the github-actions group with 2 updates (#242)
+ * ci: set seccomp=unconfined for 32bit builds (#243)
+
 flux-security version 0.16.0 - 2026-10-15
 -----------------------------------------
 
